@@ -1,2 +1,2 @@
-# search_based_nmt
+# Search-based NMT
 Neural machine translation (NMT) is an approach to machine translation.
