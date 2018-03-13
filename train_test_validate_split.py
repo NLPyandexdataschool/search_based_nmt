@@ -9,11 +9,11 @@ def train_test_validate_split(train_size=0.5, test_size=0.4, val_size=0.1,
     if train_size + test_size + val_size != 1:
         raise Exception('Train, test and val sizes must sum to 1!')
 
-    languges = ['en', 'he', 'hewv']
+    languages = ['en', 'he', 'hewv']
     types = ['dev', 'train', 'test']
     file_names = [
         '.'.join([lang, cur_type, 'txt'])
-        for lang in languges
+        for lang in languages
         for cur_type in types
     ]
     # Сортируем по reversed именам, чтобы добавлять dev, test и train из разных файлов в одном порядке
@@ -47,7 +47,7 @@ def train_test_validate_split(train_size=0.5, test_size=0.4, val_size=0.1,
 
     write_file_names = [
         '.'.join([lang, cur_type, 'txt'])
-        for lang in languges
+        for lang in languages
         for cur_type in ['train', 'test', 'val']
     ]
     write_list = [en_train, en_test, en_val, he_train, he_test, he_val, hewv_train, hewv_test, hewv_val]
