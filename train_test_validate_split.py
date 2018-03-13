@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 
 
 def train_test_validate_split(train_size=0.5, test_size=0.4, val_size=0.1,
-                              read_path='he-en', write_path='split',
+                              read_path='raw_data', write_path='split',
                               random_seed=None):
     if train_size + test_size + val_size != 1:
         raise Exception('Train, test and val sizes must sum to 1!')
