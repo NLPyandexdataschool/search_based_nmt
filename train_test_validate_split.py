@@ -1,12 +1,15 @@
 import os
+import sys
 import shutil
 from sklearn.model_selection import train_test_split
+import argparse
 
 
 def train_test_validate_split(train_size=0.5, test_size=0.4, val_size=0.1,
                               read_path='raw_data', write_path='split',
                               random_seed=None):
-    if train_size + test_size + val_size != 1:
+    eps = 1e-100
+    if abs(train_size + test_size + val_size - 1.0) < eps:
         raise Exception('Train, test and val sizes must sum to 1!')
 
     languages = ['en', 'he', 'hewv']
@@ -57,4 +60,10 @@ def train_test_validate_split(train_size=0.5, test_size=0.4, val_size=0.1,
                 handler.write(value)
 
 
-train_test_validate_split()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(type=float, nargs=3, dest='sizes')
+    parser.add_argument(type=str, nargs=2, dest='paths')
+    parser.add_argument(type=int, nargs='?', dest='seed')
+    args = parser.parse_args()
+    train_test_validate_split(*args.sizes, *args.paths, args.seed)
