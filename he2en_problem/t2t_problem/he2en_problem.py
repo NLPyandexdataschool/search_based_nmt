@@ -36,21 +36,17 @@ class TranslitHeToEn(translate.TranslateProblem):
 
     @property
     def vocab_type(self):
-        return text_problems.VocabType.CHARACTER  # CHARACTER, TOKEN - custom user vocab
+        return text_problems.VocabType.CHARACTER
 
     @property
     def is_generate_per_split(self):
-        # Because we have train/dev/test subsets
         return True
-
-    def eval_metrics(self):
-        return [metrics.Metrics.NEG_LOG_PERPLEXITY]
 
     def generate_samples(self, data_dir, tmp_dir, dataset_split):
         is_train_dataset = dataset_split == problem.DatasetSplit.TRAIN
         dataset_label = 'train' if is_train_dataset else 'dev'
         ext = '.txt'
-        he_path = os.path.join(data_dir, 'he.'+dataset_label+ext)
-        en_path = os.path.join(data_dir, 'en.'+dataset_label+ext)
+        he_path = os.path.join(data_dir, 'he.' + dataset_label + ext)
+        en_path = os.path.join(data_dir, 'en.' + dataset_label + ext)
 
         return text_problems.text2text_txt_iterator(he_path, en_path)
