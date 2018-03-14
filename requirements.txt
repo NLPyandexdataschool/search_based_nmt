@@ -1,0 +1,4 @@
+tensor2tensor
+tensorflow
+matplotlib
+nltk
