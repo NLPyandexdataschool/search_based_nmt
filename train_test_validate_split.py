@@ -1,5 +1,4 @@
 import os
-import sys
 import shutil
 from sklearn.model_selection import train_test_split
 import argparse
