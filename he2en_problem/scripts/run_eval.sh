@@ -1,7 +1,7 @@
 DATA_DIR="../raw_data"
 TRAIN_DIR="../t2t_data/train"
 T2T_USR_DIR="../t2t_problem"
-RESULT_FILE="he-to-en.translit.results.txt"
+RESULT_FILE=${1:-he-to-en.translit.results.txt}
 
 PROBLEM=translit_he_to_en
 MODEL=lstm_seq2seq_attention
