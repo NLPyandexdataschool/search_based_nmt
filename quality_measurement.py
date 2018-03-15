@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import SmoothingFunction
 
 
 def measure_quality(predicted_file_name, answers_file_name):
@@ -9,8 +10,9 @@ def measure_quality(predicted_file_name, answers_file_name):
         answers = [line[:-1] for line in answers_handler]
         if len(predictions) != len(answers):
             raise Exception('Input files must have same length!')
+        smoothie = SmoothingFunction().method4
         score = np.mean([
-            sentence_bleu(prediction, answer)
+            sentence_bleu(prediction, answer, smoothing_function=smoothie)
             for answer, prediction in zip(answers, predictions)
         ])
     return score
