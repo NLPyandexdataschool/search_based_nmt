@@ -16,12 +16,15 @@ class Searcher:
     def distance(self, first_word, second_word):
         return edit_distance(first_word, second_word)
 
-    def process_table(self, table_file_name):
-        data = []
+    def get_words(self):
+        words = []
         for file_name in self.file_names:
             with open(file_name) as handler:
-                data.extend([line.strip() for line in handler])
-        return data
+                words.extend([line.strip() for line in handler])
+        return words
+
+    def process_table(self, table_file_name):
+        pass
 
     def search(self, word, n_nearest=10):
         '''
