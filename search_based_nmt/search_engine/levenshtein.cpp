@@ -2,7 +2,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <queue>
+#include <list>
 #include <algorithm> 
 
 
@@ -66,22 +66,33 @@ bool write_nearest(std::ofstream& table_file,
                  const std::vector<std::string>& data,
                  const std::string& word,
                  unsigned int n_nearest) {
-    auto cmp = [&word](std::string left, std::string right) {
-        return levenshtein_distance(left, word) < levenshtein_distance(right, word);
-    };
-    std::priority_queue<std::string, std::vector<std::string>, decltype(cmp)> queue(cmp);
-    for (int i = 0; i < data.size(); ++i) {
-        queue.push(data[i]);
-        if (queue.size() > n_nearest) {
-            queue.pop();
+    std::list<std::string> nearest = {data[0]};
+    for (int i = 1; i < data.size(); ++i) {
+        if (
+            (nearest.size() == n_nearest) &&
+            (levenshtein_distance(word, data[i]) >= levenshtein_distance(word, nearest.front()))
+        ) {
+            continue;
+        }
+        bool inserted = false;
+        for (auto it = nearest.begin(); it != nearest.end(); ++it) {
+            if (levenshtein_distance(data[i], word) >= levenshtein_distance(*it, word)) {
+                nearest.insert(it, data[i]);
+                inserted = true;
+                break;
+            }
+        }
+        if (!inserted) {
+            nearest.push_back(data[i]);
+        }
+        if (nearest.size() > n_nearest) {
+            nearest.pop_front();
         }
     }
-    std::string append = "";
-    while(!queue.empty()) {
-        append = std::string(queue.top()) + " " + append;
-        queue.pop();
+    for (auto it = nearest.rbegin(); it != nearest.rend(); ++it) {
+        table_file << *it << " ";
     }
-    table_file << append << "\n";
+    table_file << "\n";
 }
 
 
@@ -91,8 +102,11 @@ bool make_table(const std::vector<std::string>& data, const std::string& table_f
         return false;
     }
 
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < data.size(); ++i) {
         write_nearest(table_file, data, data[i], n_nearest);
+        if (i % 10 == 0) {
+            std::cout << float(i) * 100 / data.size() << " %" << std::endl;
+        }
     }
     return true;
 }
