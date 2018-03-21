@@ -1,8 +1,8 @@
-add: levenshtein.cpp
-	g++ -std=c++11 -o process_data levenshtein.cpp -ofast
+add: process_table.cpp
+	g++ -std=c++11 -o process_data process_table.cpp -O3
 
-debug: levenshtein.cpp
-	g++ -D DEBUG -std=c++11 -o process_data levenshtein.cpp
+debug: process_table.cpp
+	g++ -D DEBUG -std=c++11 -o process_data process_table.cpp
 
-validate: levenshtein.cpp
-	g++ -D VALIDATE -std=c++11 -o process_data levenshtein.cpp
+validate: process_table.cpp
+	g++ -D VALIDATE -std=c++11 -o process_data process_table.cpp
