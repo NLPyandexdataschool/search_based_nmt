@@ -129,11 +129,11 @@ bool make_table(const std::vector<std::string>& data,
         return false;
     }
 
-    const int LIMIT = 100;//data.size();
+    const int LIMIT = data.size();
     for (int i = 0; i < LIMIT; ++i) {
         write_nearest(table_file, data, data[i], n_nearest, bound, skip_prob);
         #ifdef VALIDATE
-        if (i % 10 == 0) {
+        if (i % 100 == 0) {
             std::cout << float(i) * 100 / data.size() << " %" << std::endl;
         }
         #endif
