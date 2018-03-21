@@ -1,9 +1,10 @@
 #!/bin/bash
 
-DATA_DIR="../raw_data"
-TMP_DIR="../t2t_data/tmp"
-TRAIN_DIR="../t2t_data/train"
-T2T_USR_DIR="../t2t_problem"
+DATA_HOME_DIR="../search_based_nmt/data"
+DATA_DIR="${DATA_HOME_DIR}/raw_data"
+TMP_DIR="${DATA_HOME_DIR}/t2t_data/tmp"
+TRAIN_DIR="${DATA_HOME_DIR}/t2t_data/train"
+T2T_USR_DIR="../search_based_nmt"
 
 RESULTFILE="he-to-en.translit.results.txt"
 
