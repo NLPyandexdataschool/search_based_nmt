@@ -6,7 +6,7 @@ TMP_DIR="${DATA_HOME_DIR}/t2t_data/tmp"
 TRAIN_DIR="${DATA_HOME_DIR}/t2t_data/train"
 T2T_USR_DIR="../search_based_nmt"
 
-RESULTFILE="he-to-en.translit.results.txt"
+RESULT_FILE="he-to-en.translit.results.txt"
 
 PROBLEM=translit_he_to_en
 MODEL=lstm_seq2seq_attention
@@ -46,7 +46,7 @@ case $key in
     shift # past value
     ;;
     -r|--result_file)
-    RESULTFILE="$2"
+    RESULT_FILE="$2"
     shift # past argument
     shift # past value
     ;;
