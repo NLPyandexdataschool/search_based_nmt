@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <algorithm> 
+#include <cstdlib>
 
 
 const unsigned int INSERT_COST = 1;
@@ -65,9 +66,20 @@ bool load_data(std::vector<std::string>& data, const std::vector<std::string>& f
 bool write_nearest(std::ofstream& table_file,
                  const std::vector<std::string>& data,
                  const std::string& word,
-                 unsigned int n_nearest) {
-    std::list<std::string> nearest = {data[0]};
-    for (int i = 1; i < data.size(); ++i) {
+                 unsigned int n_nearest,
+                 float skip_prob) {
+    #ifdef DEBUG
+    std::cout << "\"" << word << "\"\n";
+    #endif
+    std::list<std::string> nearest = {word};
+    for (int i = 0; i < data.size(); ++i) {
+        if (data[i] == word) {
+            continue;
+        }
+        double rand_value = (double)std::rand() / (RAND_MAX);
+        if (rand_value < skip_prob) {
+            continue;
+        }
         if (
             (nearest.size() == n_nearest) &&
             (levenshtein_distance(word, data[i]) >= levenshtein_distance(word, nearest.front()))
@@ -90,23 +102,31 @@ bool write_nearest(std::ofstream& table_file,
         }
     }
     for (auto it = nearest.rbegin(); it != nearest.rend(); ++it) {
+        #ifdef DEBUG
+        std::cout << "    \"" << *it << " " << levenshtein_distance(word, *it) << "\"\n";
+        #endif
         table_file << *it << " ";
     }
     table_file << "\n";
 }
 
 
-bool make_table(const std::vector<std::string>& data, const std::string& table_file_name, unsigned int n_nearest) {
+bool make_table(const std::vector<std::string>& data,
+                const std::string& table_file_name,
+                unsigned int n_nearest,
+                float skip_prob=0) {
     std::ofstream table_file(table_file_name);
     if (!table_file.is_open()) {
         return false;
     }
 
-    for (int i = 0; i < data.size(); ++i) {
-        write_nearest(table_file, data, data[i], n_nearest);
+    for (int i = 0; i < 10/*data.size()*/; ++i) {
+        write_nearest(table_file, data, data[i], n_nearest, skip_prob);
+        #ifdef VALIDATE
         if (i % 10 == 0) {
             std::cout << float(i) * 100 / data.size() << " %" << std::endl;
         }
+        #endif
     }
     return true;
 }
@@ -116,8 +136,14 @@ int main(int argc, char** argv) {
     // argument 1: str - path where to read the data
     // argument 2: str - output filename
     // argument 3: uint - number of nearest words to find
-    if (argc < 4) {
+    // argument 4: float - probability to skip data line (to work faster)
+    if (argc < 5) {
         std::cout << "Wrong arguments number!" << std::endl;
+        return 0;
+    }
+    float skip_prob = std::stof(argv[4]);
+    if ((skip_prob > 1) || (skip_prob < 0)) {
+        std::cout << "Worng skip_prob!" << std::endl;
         return 0;
     }
     std::string read_path(argv[1]);
@@ -129,7 +155,7 @@ int main(int argc, char** argv) {
     };
     std::vector<std::string> data;
     if (load_data(data, file_names)) {
-        make_table(data, table_file_name, std::stoi(argv[3]));
+        make_table(data, table_file_name, std::stoi(argv[3]), skip_prob);
     } else {
         std::cout << "Error while loading data!" << std::endl;
     }
