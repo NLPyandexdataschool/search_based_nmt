@@ -21,10 +21,23 @@ class Searcher:
         for file_name in self.file_names:
             with open(file_name) as handler:
                 words.extend([line.strip() for line in handler])
-        return words
+        return list(set(words))
 
-    def process_table(self, table_file_name):
-        pass
+    def process_table(self, table_file_name, n_nearest=10):
+        words = self.get_words()
+        with open(table_file_name, 'a+') as handler:
+            for i, word in enumerate(words):
+                heap = []
+                for test_word in words:
+                    item = (-self.distance(word, test_word), test_word)
+                    if item in heap:
+                        continue
+                    if len(heap) < n_nearest:
+                        heappush(heap, item)
+                    else:
+                        heappushpop(heap, item)
+                handler.write(' '.join([word] + list(reversed([heappop(heap)[1] for _ in range(n_nearest)]))) + '\n')
+                print("{} %".format(100 * (i + 1) / len(words)))
 
     def search(self, word, n_nearest=10):
         '''
