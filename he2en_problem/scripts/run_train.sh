@@ -1,13 +1,4 @@
-DATA_DIR="../raw_data"
-TRAIN_DIR="../t2t_data/train"
-T2T_USR_DIR="../t2t_problem"
-
-PROBLEM=translit_he_to_en
-MODEL=lstm_seq2seq_attention
-HPARAMS=lstm_attention
-
-TRAIN_STEPS=${1:-2000}
-SEED=${2:-3189}
+. ./args_parse.sh
 
 t2t-trainer \
     --data_dir=$DATA_DIR \
