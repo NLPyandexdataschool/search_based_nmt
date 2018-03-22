@@ -130,7 +130,8 @@ bool make_table(const std::vector<std::string>& data,
     }
 
     const int LIMIT = data.size();
-    for (int i = 0; i < LIMIT; ++i) {
+    const int START = 0;
+    for (int i = START; i < LIMIT; ++i) {
         write_nearest(table_file, data, data[i], n_nearest, bound, skip_prob);
         #ifdef VALIDATE
         if (i % 100 == 0) {
