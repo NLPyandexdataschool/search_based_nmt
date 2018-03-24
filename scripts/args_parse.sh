@@ -1,10 +1,10 @@
 #!/bin/bash
+SCRIPTS_PATH=$(dirname $0)
 
-DATA_HOME_DIR="../search_based_nmt/data"
-DATA_DIR="${DATA_HOME_DIR}/raw_data"
-TMP_DIR="${DATA_HOME_DIR}/t2t_data/tmp"
-TRAIN_DIR="${DATA_HOME_DIR}/t2t_data/train"
-T2T_USR_DIR="../search_based_nmt"
+DATA_DIR="../raw_data"
+TMP_DIR="../t2t_data/tmp"
+TRAIN_DIR="../t2t_data/train"
+T2T_USR_DIR="../t2t_problem"
 
 RESULT_FILE="he-to-en.translit.results.txt"
 
@@ -14,6 +14,7 @@ HPARAMS=lstm_attention
 
 TRAIN_STEPS=2000
 SEED=3189
+
 
 while [[ $# -gt 0 ]]
 do
@@ -40,13 +41,8 @@ case $key in
     shift # past argument
     shift # past value
     ;;
-    --t2t_usr_dir)
-    T2T_USR_DIR="$2"
-    shift # past argument
-    shift # past value
-    ;;
     -r|--result_file)
-    RESULT_FILE="$2"
+    RESULTFILE="$2"
     shift # past argument
     shift # past value
     ;;

@@ -1,4 +1,7 @@
-. ./args_parse.sh
+#!/usr/bin/env bash
+SCRIPTS_PATH=$(dirname $0)
+
+. $SCRIPTS_PATH/args_parse.sh
 
 t2t-trainer \
     --data_dir=$DATA_DIR \
