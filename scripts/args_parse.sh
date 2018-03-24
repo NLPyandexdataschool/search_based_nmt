@@ -1,10 +1,11 @@
 #!/bin/bash
 SCRIPTS_PATH=$(dirname $0)
 
-DATA_DIR="../raw_data"
-TMP_DIR="../t2t_data/tmp"
-TRAIN_DIR="../t2t_data/train"
-T2T_USR_DIR="../t2t_problem"
+HOME_DIR="$SCRIPTS_PATH/../search_based_nmt"
+DATA_DIR="$HOME_DIR/data/raw_data"
+TMP_DIR="$HOME_DIR/data/t2t_data/tmp"
+TRAIN_DIR="$HOME_DIR/data/t2t_data/train"
+T2T_USR_DIR="$HOME_DIR"
 
 RESULT_FILE="he-to-en.translit.results.txt"
 
