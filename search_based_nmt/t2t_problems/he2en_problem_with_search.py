@@ -13,29 +13,25 @@ import six
 
 import os
 
-
-def txt_line_split_iterator(txt_path, delimiter='\t'):
-    """Iterate through lines of file."""
-    with tf.gfile.Open(txt_path) as f:
-        for line in f:
-            yield [word for word in line.strip().split(delimiter)]
+from search_based_nmt.search_engine.searcher import Searcher
+from search_based_nmt.search_engine.translator import Translator
 
 
-def txt_search_base_iter(dict_path, target_path):
-    for splited_dict_line, target in zip(txt_line_split_iterator(dict_path),
-                                         text_problems.txt_line_iterator(target_path)):
-        nearest = {'nearest1': splited_dict_line[0], 'nearest2': splited_dict_line[0][1:]}
-        yield {'inputs': splited_dict_line[0], 'targets': target, **nearest}
+def txt_search_base_iter(source_path, target_path, searcher, translator, num_nearest):
+    for source, target in zip(text_problems.txt_line_iterator(source_path),
+                              text_problems.txt_line_iterator(target_path)):
+        result_dict = {'inputs': source, 'targets': target}
+        nearest_words = searcher.search(source, num_nearest)
+        for i, nearest_word in enumerate(nearest_words):
+            nearest_target = translator.translate(nearest_word)[0]
+            result_dict['nearest' + str(i)] = nearest_word
+            result_dict['nearest_target' + str(i)] = nearest_target
+        yield result_dict
 
 
 def generate_encoded_samples_for_search_based(sample_generator, encoder):
     for sample in sample_generator:
-        sample["inputs"] = encoder.encode(sample["inputs"])
-        sample["inputs"].append(text_encoder.EOS_ID)
-        sample["targets"] = encoder.encode(sample["targets"])
-        sample["targets"].append(text_encoder.EOS_ID)
-        for i in range(1, 3):
-            key = "nearest" + str(i)
+        for key in sample.keys():
             sample[key] = encoder.encode(sample[key])
             sample[key].append(text_encoder.EOS_ID)
         yield sample
@@ -43,6 +39,10 @@ def generate_encoded_samples_for_search_based(sample_generator, encoder):
 
 @registry.register_problem('he2en_ws')
 class TranslitHeToEnWithSearch(translate.TranslateProblem):
+    num_nearest = 4
+    nearest_keys = ["nearest" + str(i) for i in range(num_nearest)]
+    nearest_target_keys = ["nearest_target" + str(i) for i in range(num_nearest)]
+
     @property
     def dataset_splits(self):
         """Splits of data to produce and number of output shards for each."""
@@ -73,7 +73,14 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
         he_path = os.path.join(data_dir, 'he.' + dataset_label + ext)
         en_path = os.path.join(data_dir, 'en.' + dataset_label + ext)
 
-        return txt_search_base_iter(he_path, en_path)
+        search_he_path = os.path.join(data_dir, 'he.search' + ext)
+        search_en_path = os.path.join(data_dir, 'en.search' + ext)
+        table_path = os.path.join(data_dir, '../../search_engine/table.txt')
+        searcher = Searcher(table_path, search_he_path)
+        translator = Translator(data_dir, search_en_path)
+
+        return txt_search_base_iter(he_path, en_path, searcher, translator,
+                                    self.num_nearest)
 
     def generate_encoded_samples(self, data_dir, tmp_dir, dataset_split):
         generator = self.generate_samples(data_dir, tmp_dir, dataset_split)
@@ -82,29 +89,49 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
 
     def feature_encoders(self, data_dir):
         encoders = super().feature_encoders(data_dir)
-        encoders["nearest1"] = encoders["inputs"]
+        for key in self.nearest_keys:
+            encoders[key] = encoders["inputs"]
+        for key in self.nearest_target_keys:
+            encoders[key] = encoders["targets"]
         return encoders
 
     def hparams(self, defaults, unused_model_hparams):
         super().hparams(defaults, unused_model_hparams)
-        nearest_vocab_size = self._encoders["nearest1"].vocab_size
-        defaults.input_modality["nearest1"] = (registry.Modalities.SYMBOL, nearest_vocab_size)
+        for key in self.nearest_keys:
+            vocab_size = self._encoders[key].vocab_size
+            defaults.input_modality[key] = (registry.Modalities.SYMBOL, vocab_size)
+
+        defaults.target_modality = {"targets": defaults.target_modality}
+        for key in self.nearest_target_keys:
+            vocab_size = self._encoders[key].vocab_size
+            defaults.target_modality[key] = (registry.Modalities.SYMBOL, vocab_size)
+
+        defaults.add_hparam("num_nearest", self.num_nearest)
+        defaults.add_hparam("nearest_keys",  self.nearest_keys)
+        defaults.add_hparam("nearest_target_keys", self.nearest_target_keys)
 
     def preprocess_example(self, example, mode, hparams):
         result = super().preprocess_example(example, mode, hparams)
-        result["nearest1"] = result["nearest1"][:hparams.max_input_seq_length]
+        for i in range(self.num_nearest):
+            max_lengths = [hparams.max_input_seq_length, hparams.max_target_seq_length]
+            all_keys = [self.nearest_keys, self.nearest_target_keys]
+            for max_length, keys in zip(max_lengths, all_keys):
+                for key in keys:
+                    result[key] = result[key][:max_length]
         return result
 
     def example_reading_spec(self):
         data_fields = {
             "inputs": tf.VarLenFeature(tf.int64),
             "targets": tf.VarLenFeature(tf.int64),
-            "nearest1": tf.VarLenFeature(tf.int64)
         }
+        for key in (self.nearest_keys + self.nearest_target_keys):
+            data_fields[key] = tf.VarLenFeature(tf.int64)
+
         data_items_to_decoders = None
         return (data_fields, data_items_to_decoders)
 
-    def input_fn(self,
+    def input_fn(self,  # noqa: C901
                  mode,
                  hparams,
                  data_dir=None,
@@ -288,8 +315,10 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
 
 def standardize_shapes(features, batch_size=None):
     """Set the right shapes for the features."""
-
-    for fname in ["inputs", "targets", "nearest1"]:
+    keys = (["inputs", "targets"] +
+            TranslitHeToEnWithSearch.nearest_keys +
+            TranslitHeToEnWithSearch.nearest_target_keys)
+    for fname in keys:
         if fname not in features:
             continue
 
