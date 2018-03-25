@@ -1,4 +1,4 @@
-from tensor2tensor.utils.t2t_model import T2TModel
+from tensor2tensor.utils.t2t_model import T2TModel, log_info
 from tensor2tensor.utils import registry
 
 import tensorflow as tf
@@ -43,19 +43,19 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
         search_based_rnn_cell = LSTMShallowFusionCell(hparams.hidden_size, build_storage, storage)
         decoder_outputs, _ = lstm_attention_search_based_decoder(
             common_layers.flatten4d3d(shifted_targets),
-            search_based_rnn_cell,
             hparams, train, "decoder",
-            final_encoder_state, encoder_outputs)
+            final_encoder_state, encoder_outputs,
+            build_storage, storage)
         return tf.expand_dims(decoder_outputs, axis=2)
 
 
-def lstm_attention_search_based_decoder(
-        inputs, rnn_cell, hparams, train, name, initial_state, encoder_outputs):
+def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_state,
+                                        encoder_outputs, build_storage, storage):
     """Run LSTM cell with attention on inputs of shape [batch x time x size]."""
 
     def dropout_lstm_cell():
         return tf.contrib.rnn.DropoutWrapper(
-            rnn_cell,
+            LSTMShallowFusionCell(hparams.hidden_size, build_storage, storage),
             input_keep_prob=1.0 - hparams.dropout * tf.to_float(train))
 
     layers = [dropout_lstm_cell() for _ in range(hparams.num_hidden_layers)]
@@ -108,10 +108,21 @@ class LSTMSearchBased(T2TModel):
                                                 train,
                                                 build_storage=True,
                                                 storage=storage)
-
         return lstm_seq2seq_search_based_attention(features['inputs'],
                                                    features['targets'],
                                                    self._hparams,
                                                    train,
                                                    build_storage=False,
                                                    storage=storage)
+    def bottom(self, features):
+        transformed_features = super().bottom(features)
+
+        # here we can define how to transform nearest_targets
+        # now they are transformed like targets
+        target_modality = self._problem_hparams.target_modality
+        with tf.variable_scope(target_modality.name, reuse=True):
+            for key in self._problem_hparams.nearest_target_keys:
+                log_info("Transforming %s with %s.targets_bottom", key, target_modality.name)
+                transformed_features[key] = target_modality.targets_bottom(features[key])
+
+        return transformed_features

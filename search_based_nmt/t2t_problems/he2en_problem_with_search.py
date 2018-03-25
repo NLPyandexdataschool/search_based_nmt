@@ -101,11 +101,6 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
             vocab_size = self._encoders[key].vocab_size
             defaults.input_modality[key] = (registry.Modalities.SYMBOL, vocab_size)
 
-        defaults.target_modality = {"targets": defaults.target_modality}
-        for key in self.nearest_target_keys:
-            vocab_size = self._encoders[key].vocab_size
-            defaults.target_modality[key] = (registry.Modalities.SYMBOL, vocab_size)
-
         defaults.add_hparam("num_nearest", self.num_nearest)
         defaults.add_hparam("nearest_keys",  self.nearest_keys)
         defaults.add_hparam("nearest_target_keys", self.nearest_target_keys)
