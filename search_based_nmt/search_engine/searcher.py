@@ -6,7 +6,7 @@ class SearcherException(Exception):
     pass
 
 
-class Searcher:
+class StupidSearcher:
     def __init__(self, file_names):
         '''
         Argument file_names is a list of files to search names.
@@ -57,3 +57,24 @@ class Searcher:
         if len(heap) != n_nearest:
             raise SearcherException("Wrong result length!")
         return list(reversed([heappop(heap)[1] for _ in range(n_nearest)]))
+
+
+class Searcher:
+    def __init__(self, table_file_name, file_to_search_name):
+        with open(file_to_search_name) as handler:
+            self.words_to_search = set([line.strip() for line in handler])
+        self.data = {}
+        with open(table_file_name) as handler:
+            for line in handler:
+                words = line.strip().split(' ')
+                self.data[words[0]] = words[1:]
+
+    def search(self, word, n_nearest=10):
+        if word not in self.data:
+            return []
+        else:
+            return [
+                word
+                for word in self.data[word]
+                if word in self.words_to_search
+            ][:n_nearest]
