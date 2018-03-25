@@ -31,7 +31,7 @@ def rnn(inputs, rnn_cell, hparams, train, name, initial_state=None):
 
 def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_storage, storage):
     """LSTM seq2seq search-based model with attention"""
-    with tf.variable_scope("lstm_seq2seq_attention", reuse=True):
+    with tf.variable_scope("lstm_seq2seq_attention", reuse=tf.AUTO_REUSE):
         # Flatten inputs.
         inputs = common_layers.flatten4d3d(inputs)
         # LSTM encoder.
@@ -95,14 +95,15 @@ def lstm_attention_search_based_decoder(
         return output, state
 
 
-@registry.register_model()
+@registry.register_model("search_based_model")
 class LSTMSearchBased(T2TModel):
     def body(self, features):
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
         storage = []
-        for i in range(self._hparams.num_nearests):
-            lstm_seq2seq_search_based_attention(features['nearest' + str(i)],
-                                                features['nearest_target' + str(i)],
+        for nearest_key, nearest_target_key in zip(self._problem_hparams.nearest_keys,
+                                                   self._problem_hparams.nearest_target_keys):
+            lstm_seq2seq_search_based_attention(features[nearest_key],
+                                                features[nearest_target_key],
                                                 self._hparams,
                                                 train,
                                                 build_storage=True,
