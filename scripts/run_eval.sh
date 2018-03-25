@@ -3,7 +3,7 @@ SCRIPTS_PATH=$(dirname $0)
 
 . $SCRIPTS_PATH/args_parse.sh &&
 
-t2t-decoder \
+python3 $SCRIPTS_PATH/../search_based_nmt/decode/t2t_decoder.py \
     --data_dir=$DATA_DIR \
     --problems=$PROBLEM\
     --model=$MODEL\
