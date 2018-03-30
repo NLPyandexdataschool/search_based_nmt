@@ -6,12 +6,16 @@ DATA_DIR="$HOME_DIR/data/raw_data"
 TMP_DIR="$HOME_DIR/data/t2t_data/tmp"
 TRAIN_DIR="$HOME_DIR/data/t2t_data/train"
 T2T_USR_DIR="$HOME_DIR"
+TEST_FILE='he.test.txt'
+TEST_EN_FILE='en.test.txt'
 
 RESULT_FILE="he-to-en.translit.results.txt"
 
 PROBLEM=translit_he_to_en
 MODEL=lstm_seq2seq_attention
-HPARAMS=lstm_attention
+HPARAMS_SET=lstm_attention
+ADDITIONAL_HPARAMS=""
+BATCH_SIZE=128
 
 TRAIN_STEPS=2000
 SEED=3189
@@ -43,7 +47,7 @@ case $key in
     shift # past value
     ;;
     -r|--result_file)
-    RESULTFILE="$2"
+    RESULT_FILE="$2"
     shift # past argument
     shift # past value
     ;;
@@ -60,7 +64,19 @@ case $key in
     ;;
 
     --params_set)
-    HPARAMS="$2"
+    HPARAMS_SET="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
+    --batch_size)
+    BATCH_SIZE="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
+    --additional_params)
+    ADDITIONAL_HPARAMS="$2"
     shift # past argument
     shift # past value
     ;;
