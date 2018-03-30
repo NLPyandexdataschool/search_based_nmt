@@ -16,4 +16,4 @@ python3 $SCRIPTS_PATH/../search_based_nmt/decode/t2t_decoder.py \
 
 echo
 echo 'run quality_measurement'
-python3 $SCRIPTS_PATH/../search_based_nmt/utils/quality_measurement.py $DATA_DIR/en.test.txt $DATA_DIR/$RESULT_FILE
+python3 $SCRIPTS_PATH/../search_based_nmt/utils/quality_measurement.py $DATA_DIR/$RESULT_FILE $DATA_DIR/en.test.txt

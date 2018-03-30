@@ -14,7 +14,7 @@ def measure_quality(predicted_file_name, answers_file_name):
         # no smoothing
         smoothie = SmoothingFunction().method0
         score = np.mean([
-            sentence_bleu(prediction, answer, smoothing_function=smoothie)
+            sentence_bleu(answers, prediction, smoothing_function=smoothie)
             for answer, prediction in zip(answers, predictions)
         ])
     return score
