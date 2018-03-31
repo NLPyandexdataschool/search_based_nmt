@@ -6,7 +6,7 @@ from tensorflow.python.eager import context
 from search_based_nmt.search_engine.searcher import Searcher
 from tensor2tensor.layers import common_layers
 from itertools import count
-from search_based_nmt.rnn_cells.lstm import LSTMShallowFusionCell
+from search_based_nmt.rnn_cells.lstm import LSTMShallowFusionCell, AttentionWrapperSearchBased
 
 import six
 
@@ -40,12 +40,16 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
             tf.reverse(inputs, axis=[1]), lstm_cell, hparams, train, "encoder")
         # LSTM decoder with attention
         shifted_targets = common_layers.shift_right(targets)
-        search_based_rnn_cell = LSTMShallowFusionCell(hparams.hidden_size, build_storage, storage)
+        # search_based_rnn_cell = LSTMShallowFusionCell(hparams.hidden_size, build_storage, storage)
         decoder_outputs, _ = lstm_attention_search_based_decoder(
             common_layers.flatten4d3d(shifted_targets),
             hparams, train, "decoder",
             final_encoder_state, encoder_outputs,
             build_storage, storage)
+
+        for i, x in enumerate(storage):
+            storage[i].append(tf.squeeze(targets[i]))
+
         return tf.expand_dims(decoder_outputs, axis=2)
 
 
@@ -69,9 +73,10 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
     attention_mechanism = attention_mechanism_class(
         hparams.hidden_size, encoder_outputs)
 
-    cell = tf.contrib.seq2seq.AttentionWrapper(
+    cell = AttentionWrapperSearchBased(
         tf.nn.rnn_cell.MultiRNNCell(layers),
         [attention_mechanism]*hparams.num_heads,
+        storage=storage, build_storage=build_storage,
         attention_layer_size=[hparams.attention_layer_size]*hparams.num_heads,
         output_attention=(hparams.output_attention == 1))
 
@@ -100,14 +105,21 @@ class LSTMSearchBased(T2TModel):
     def body(self, features):
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
         storage = []
+        print ('neares_keys', self._problem_hparams.nearest_keys)
         for nearest_key, nearest_target_key in zip(self._problem_hparams.nearest_keys,
                                                    self._problem_hparams.nearest_target_keys):
+            st = []
             lstm_seq2seq_search_based_attention(features[nearest_key],
                                                 features[nearest_target_key],
                                                 self._hparams,
                                                 train,
                                                 build_storage=True,
-                                                storage=storage)
+                                                storage=st)
+            storage.extend(st)
+
+        with open('tmp_log.txt', 'a') as f:
+            print ('storage', storage, file=f)
+
         return lstm_seq2seq_search_based_attention(features['inputs'],
                                                    features['targets'],
                                                    self._hparams,
