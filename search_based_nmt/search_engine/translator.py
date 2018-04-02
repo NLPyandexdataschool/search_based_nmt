@@ -17,7 +17,7 @@ class Translator:
         with open(file_to_search_name) as handler:
             words_to_search = set(handler.readlines())
         for he_word, en_word in data:
-            if en_word in words_to_search:
+            if he_word in words_to_search:
                 self.dict[he_word.strip()].append(en_word.strip())
 
     def translate(self, he_word):
