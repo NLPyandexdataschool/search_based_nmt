@@ -18,4 +18,8 @@ t2t-decoder \
 
 echo &&
 echo 'run quality_measurement' &&
-python3 $SCRIPTS_PATH/../search_based_nmt/utils/quality_measurement.py "$DATA_DIR/$TEST_EN_FILE" "$DATA_DIR/$TEST_FILE" $DATA_DIR/$RESULT_FILE
+python3 $SCRIPTS_PATH/../search_based_nmt/utils/quality_measurement.py \
+    --references "$DATA_DIR/$TEST_EN_FILE" \
+    --sources "$DATA_DIR/$TEST_FILE" \
+    --hypotheses "$DATA_DIR/$RESULT_FILE" \
+    --n $SMOOTH_METHOD

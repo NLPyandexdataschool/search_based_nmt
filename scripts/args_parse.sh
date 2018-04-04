@@ -6,8 +6,8 @@ DATA_DIR="$HOME_DIR/data/raw_data/train_no_search"
 TMP_DIR="$HOME_DIR/data/t2t_data/tmp"
 TRAIN_DIR="$HOME_DIR/data/t2t_data/train"
 T2T_USR_DIR="$HOME_DIR"
-TEST_FILE='../he.test.txt'
-TEST_EN_FILE='../en.test.txt'
+TEST_FILE='he.test.txt'
+TEST_EN_FILE='en.test.txt'
 
 RESULT_FILE="he-to-en.translit.results.txt"
 
@@ -19,6 +19,8 @@ BATCH_SIZE=128
 EVAL_FREQUENCY=1000
 TRAIN_STEPS=2000
 SEED=3189
+
+SMOOTH_METHOD=3
 
 
 while [[ $# -gt 0 ]]
@@ -94,6 +96,12 @@ case $key in
 
     -s|--random_seed)
     SEED="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
+    --smooth_method)
+    SMOOTH_METHOD="$2"
     shift # past argument
     shift # past value
     ;;
