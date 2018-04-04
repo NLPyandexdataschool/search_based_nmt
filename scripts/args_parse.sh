@@ -16,7 +16,7 @@ MODEL=lstm_seq2seq_attention
 HPARAMS_SET=lstm_attention
 ADDITIONAL_HPARAMS=""
 BATCH_SIZE=128
-
+EVAL_FREQUENCY=1000
 TRAIN_STEPS=2000
 SEED=3189
 
@@ -85,6 +85,13 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+
+    --eval_frequency)
+    EVAL_FREQUENCY="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
     -s|--random_seed)
     SEED="$2"
     shift # past argument
