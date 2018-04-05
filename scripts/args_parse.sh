@@ -6,8 +6,11 @@ DATA_DIR="$HOME_DIR/data/raw_data/train_no_search"
 TMP_DIR="$HOME_DIR/data/t2t_data/tmp"
 TRAIN_DIR="$HOME_DIR/data/t2t_data/train"
 T2T_USR_DIR="$HOME_DIR"
-TEST_HE_FILE='he.test.txt'
-TEST_EN_FILE='en.test.txt'
+
+TRAIN_NAME='train' # unused
+DEV_NAME='dev' # unused
+TEST_NAME='test'
+SEARCH_NAME='search'
 
 RESULT_FILE="he-to-en.translit.results.txt"
 
@@ -33,26 +36,31 @@ case $key in
     shift # past argument
     shift # past value
     ;;
+
     --tmp_dir)
     TMP_DIR="$2"
     shift # past argument
     shift # past value
     ;;
+
     --train_dir)
     TRAIN_DIR="$2"
     shift # past argument
     shift # past value
     ;;
+
     --t2t_usr_dir)
     T2T_USR_DIR="$2"
     shift # past argument
     shift # past value
     ;;
+
     -r|--result_file)
     RESULT_FILE="$2"
     shift # past argument
     shift # past value
     ;;
+
     -p|--problem)
     PROBLEM="$2"
     shift # past argument
@@ -105,16 +113,31 @@ case $key in
     shift # past argument
     shift # past value
     ;;
-    --test_he)
-    TEST_HE_FILE="$2"
+
+    --train_name)
+    TRAIN_NAME="$2"
     shift # past argument
     shift # past value
     ;;
-    --test_en)
-    TEST_EN_FILE="$2"
+
+    --dev_name)
+    DEV_NAME="$2"
     shift # past argument
     shift # past value
     ;;
+
+    --test_name)
+    TEST_NAME="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
+    --search_name)
+    SEARCH_NAME="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
     *)    # unknown option
     echo "unknown option $1"
     shift # past argument

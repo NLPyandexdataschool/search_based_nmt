@@ -12,14 +12,14 @@ t2t-decoder \
     --hparams="$ADDITIONAL_HPARAMS"\
     --output_dir=$TRAIN_DIR \
     --decode_hparams="beam_size=4,alpha=0.5" \
-    --decode_from_file="$DATA_DIR/$TEST_HE_FILE" \
+    --decode_from_file="$DATA_DIR/he.$TEST_NAME.txt" \
     --decode_to_file="$DATA_DIR/$RESULT_FILE" \
     --t2t_usr_dir=$T2T_USR_DIR &&
 
 echo &&
 echo 'run quality_measurement' &&
 python3 $SCRIPTS_PATH/../search_based_nmt/utils/quality_measurement.py \
-    --references "$DATA_DIR/$TEST_EN_FILE" \
-    --sources "$DATA_DIR/$TEST_HE_FILE" \
+    --references "$DATA_DIR/en.$TEST_NAME.txt" \
+    --sources "$DATA_DIR/he.$TEST_NAME.txt" \
     --hypotheses "$DATA_DIR/$RESULT_FILE" \
     --n $SMOOTH_METHOD

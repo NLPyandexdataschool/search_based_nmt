@@ -17,6 +17,9 @@ from search_based_nmt.search_engine.searcher import Searcher
 from search_based_nmt.search_engine.translator import Translator
 
 
+SEARCH_NAME = os.getenv('SEARCH_NAME', 'search')
+
+
 def txt_search_base_iter(source_path, target_path, searcher, translator, num_nearest):
     for source, target in zip(text_problems.txt_line_iterator(source_path),
                               text_problems.txt_line_iterator(target_path)):
@@ -73,11 +76,13 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
         he_path = os.path.join(data_dir, 'he.' + dataset_label + ext)
         en_path = os.path.join(data_dir, 'en.' + dataset_label + ext)
 
-        search_he_path = os.path.join(data_dir, 'he.search' + ext)
-        search_en_path = os.path.join(data_dir, 'en.search' + ext)
-        table_path = os.path.join(data_dir, '../../search_engine/table.txt')
+        search_he_path = os.path.join(data_dir, 'he.' + SEARCH_NAME + ext)
+        search_en_path = os.path.join(data_dir, 'en.' + SEARCH_NAME + ext)
+        table_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                  '..', 'search_engine', 'table.txt')
+
         searcher = Searcher(table_path, search_he_path)
-        translator = Translator(data_dir, search_en_path)
+        translator = Translator(data_dir, search_he_path)
 
         return txt_search_base_iter(he_path, en_path, searcher, translator,
                                     self.num_nearest)
