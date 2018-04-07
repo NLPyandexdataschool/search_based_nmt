@@ -65,6 +65,13 @@ def _compute_attention(attention_mechanism, cell_output, attention_state,
   return attention, alignments, next_attention_state
 
 
+def T(x):
+    return tf.transpose(x, [1, 0])
+
+def expand_1(x):
+    return tf.reshape(x, (128, 1, x.shape[1]))
+
+
 class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
     """Wraps another `RNNCell` with attention.
      """
@@ -73,6 +80,8 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
                  attention_mechanism,
                  build_storage=False,
                  storage=None,
+                 fusion_type='deep',
+                 p_copy=None,
                  attention_layer_size=None,
                  alignment_history=False,
                  cell_input_fn=None,
@@ -160,6 +169,14 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
         )
         self._build_storage = build_storage
         self._storage = storage
+        self._fusion_type = fusion_type
+        self._p_copy = p_copy
+
+        self.M = tf.Variable(tf.random_normal((attention_layer_size[0],
+                                               attention_layer_size[0]), stddev=0.1), trainable=True)
+
+        # self.f_gate_1 = tf.layers.Dense(64, activation='relu')
+        self.f_gate = tf.layers.Dense(1, activation='sigmoid')
 
     def call(self, inputs, state):
         """Perform a step of attention-wrapped RNN.
@@ -247,8 +264,25 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
             alignments=self._item_or_tuple(all_alignments),
             alignment_history=self._item_or_tuple(maybe_all_histories))
 
+        with open('tmp_file.txt', 'w') as f:
+            print (self._storage, attention, file=f)
+
         if self._build_storage:
-            self._storage.append([attention, cell_output])
+            self._storage[0] = tf.concat([self._storage[0], expand_1(attention)], axis=1)
+            self._storage[1] = tf.concat([self._storage[1], expand_1(cell_output)], axis=1)
+        else:
+            m_attn = tf.tensordot(attention, self.M, axes=[1, 0])
+            q = T(tf.reduce_sum(tf.transpose(self._storage[0], [1, 0, 2]) * m_attn, axis=2))
+            z_tilda = tf.reduce_sum(tf.transpose(q * tf.transpose(self._storage[1], [2, 0, 1]), [1, 2, 0]), axis=1)
+
+            concat = tf.concat([attention, cell_output, z_tilda], axis=1)
+            dzeta = tf.squeeze(self.f_gate(concat))
+
+            if self._fusion_type == 'deep':
+                cell_output = T(T(cell_output) * (1. - dzeta)) + T(dzeta * T(z_tilda))
+            else:
+                x = T(dzeta * T(q))
+                self._p_copy = tf.concat([self._p_copy, tf.reshape(x, (x.shape[0], 1, x.shape[1]))], axis=1)
 
         if self._output_attention:
             return attention, next_state

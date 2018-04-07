@@ -47,8 +47,6 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
             final_encoder_state, encoder_outputs,
             build_storage, storage)
 
-        for i, x in enumerate(storage):
-            storage[i].append(tf.squeeze(targets[i]))
 
         return tf.expand_dims(decoder_outputs, axis=2)
 
@@ -73,10 +71,15 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
     attention_mechanism = attention_mechanism_class(
         hparams.hidden_size, encoder_outputs)
 
+    if not build_storage:
+        p_copy = tf.zeros((inputs.shape[0], 0, storage.shape[1]))
+    else:
+        p_copy = None
+
     cell = AttentionWrapperSearchBased(
         tf.nn.rnn_cell.MultiRNNCell(layers),
         [attention_mechanism]*hparams.num_heads,
-        storage=storage, build_storage=build_storage,
+        storage=storage, build_storage=build_storage, fusion_type='deep', p_copy=p_copy,
         attention_layer_size=[hparams.attention_layer_size]*hparams.num_heads,
         output_attention=(hparams.output_attention == 1))
 
@@ -104,18 +107,19 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
 class LSTMSearchBased(T2TModel):
     def body(self, features):
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
-        storage = []
+        storage = [tf.zeros((self._hparams.batch_size, 0, self._hparams.attention_layer_size * self._hparams.num_heads)),
+                   tf.zeros((self._hparams.batch_size, 0, self._hparams.hidden_size))]
+
         print ('neares_keys', self._problem_hparams.nearest_keys)
         for nearest_key, nearest_target_key in zip(self._problem_hparams.nearest_keys,
                                                    self._problem_hparams.nearest_target_keys):
-            st = []
+
             lstm_seq2seq_search_based_attention(features[nearest_key],
                                                 features[nearest_target_key],
                                                 self._hparams,
                                                 train,
                                                 build_storage=True,
-                                                storage=st)
-            storage.extend(st)
+                                                storage=storage)
 
         with open('tmp_log.txt', 'a') as f:
             print ('storage', storage, file=f)
