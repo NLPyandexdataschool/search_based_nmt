@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import sentence_bleu, corpus_bleu
 from nltk.translate.bleu_score import SmoothingFunction
 import warnings
 from collections import defaultdict
@@ -45,15 +45,21 @@ def measure_quality(references_file_name, sources_file_name, hypotheses_file_nam
                     references_dict[source.strip()].append(reference.strip())
                     hypotheses_dict[source.strip()] = hypothesis.strip()
 
-                predictions = [hypotheses_dict[key] for key in hypotheses_dict]
-                targets = [references_dict[key] for key in hypotheses_dict]
+                predictions = []
+                targets = []
+                for key in hypotheses_dict:
+                    predictions.append(hypotheses_dict[key])
+                    targets.append(references_dict[key])
+                # predictions = [hypotheses_dict[key] for key in hypotheses_dict]
+                # targets = [references_dict[key] for key in hypotheses_dict]
 
                 smoothie = METHODS[n]
-                score = np.mean([
-                    sentence_bleu(references=target, hypothesis=prediction,
-                                  smoothing_function=smoothie)
-                    for target, prediction in zip(targets, predictions)
-                ])
+                score = corpus_bleu(
+                    list_of_references=targets,
+                    hypotheses=predictions,
+                    smoothing_function=smoothie,
+                    emulate_multibleu=True
+                )
                 return score
 
 
