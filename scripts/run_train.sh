@@ -7,9 +7,10 @@ t2t-trainer \
     --data_dir=$DATA_DIR \
     --problems=$PROBLEM\
     --model=$MODEL\
-    --hparams_set=$HPARAMS\
-    --hparams="batch_size=128" \
+    --hparams_set=$HPARAMS_SET\
+    --hparams="batch_size=$BATCH_SIZE,$ADDITIONAL_HPARAMS" \
     --output_dir=$TRAIN_DIR \
     --random_seed=$SEED \
     --train_steps=$TRAIN_STEPS \
-    --t2t_usr_dir=$T2T_USR_DIR
+    --t2t_usr_dir=$T2T_USR_DIR \
+    --local_eval_frequency=$EVAL_FREQUENCY

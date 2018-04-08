@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 SCRIPTS_PATH=$(dirname $0)
 
-. $SCRIPTS_PATH/args_parse.sh
+. $SCRIPTS_PATH/args_parse.sh &&
 
 t2t-datagen \
     --data_dir=$DATA_DIR\
