@@ -40,13 +40,11 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
             tf.reverse(inputs, axis=[1]), lstm_cell, hparams, train, "encoder")
         # LSTM decoder with attention
         shifted_targets = common_layers.shift_right(targets)
-        # search_based_rnn_cell = LSTMShallowFusionCell(hparams.hidden_size, build_storage, storage)
         decoder_outputs, _ = lstm_attention_search_based_decoder(
             common_layers.flatten4d3d(shifted_targets),
             hparams, train, "decoder",
             final_encoder_state, encoder_outputs,
             build_storage, storage)
-
 
         return tf.expand_dims(decoder_outputs, axis=2)
 
@@ -107,10 +105,11 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
 class LSTMSearchBased(T2TModel):
     def body(self, features):
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
-        storage = [tf.zeros((self._hparams.batch_size, 0, self._hparams.attention_layer_size * self._hparams.num_heads)),
+        storage = [tf.zeros((self._hparams.batch_size, 0,
+                             self._hparams.attention_layer_size * self._hparams.num_heads)),
                    tf.zeros((self._hparams.batch_size, 0, self._hparams.hidden_size))]
 
-        print ('neares_keys', self._problem_hparams.nearest_keys)
+        print('neares_keys', self._problem_hparams.nearest_keys)
         for nearest_key, nearest_target_key in zip(self._problem_hparams.nearest_keys,
                                                    self._problem_hparams.nearest_target_keys):
 
@@ -122,7 +121,7 @@ class LSTMSearchBased(T2TModel):
                                                 storage=storage)
 
         with open('tmp_log.txt', 'a') as f:
-            print ('storage', storage, file=f)
+            print('storage', storage, file=f)
 
         return lstm_seq2seq_search_based_attention(features['inputs'],
                                                    features['targets'],
@@ -130,15 +129,48 @@ class LSTMSearchBased(T2TModel):
                                                    train,
                                                    build_storage=False,
                                                    storage=storage)
+
     def bottom(self, features):
         transformed_features = super().bottom(features)
 
         # here we can define how to transform nearest_targets
-        # now they are transformed like targets
+        # now they are transformed with one-hot encoding
         target_modality = self._problem_hparams.target_modality
-        with tf.variable_scope(target_modality.name, reuse=True):
-            for key in self._problem_hparams.nearest_target_keys:
-                log_info("Transforming %s with %s.targets_bottom", key, target_modality.name)
-                transformed_features[key] = target_modality.targets_bottom(features[key])
+        vocab_size = target_modality._vocab_size
+        print("\n\nvocab_size:", vocab_size, "\n\n")
+        for key in self._problem_hparams.nearest_target_keys:
+            log_info("Transforming %s with %s.targets_bottom", key, target_modality.name)
+            transformed_features[key] = target_modality.targets_bottom(features[key])
+            log_info("Transforming %s with one-hot encoding", key)
+            # shape is (bs, max_len, vocab_size)
+            transformed_features[key + "_one_hot"] = tf.one_hot(features[key],
+                                                                depth=vocab_size,
+                                                                axis=-1)
 
         return transformed_features
+
+    def model_fn(self, features):
+        """
+        We need this for shallow fusion to change logits.
+        """
+        transformed_features = self.bottom(features)
+
+        if self.hparams.activation_dtype == "bfloat16":
+            for k, v in six.iteritems(transformed_features):
+                if v.dtype == tf.float32:
+                    transformed_features[k] = tf.cast(v, tf.bfloat16)
+
+        with tf.variable_scope("body"):
+            log_info("Building model body")
+            body_out = self.body(transformed_features)
+        output, losses = self._normalize_body_output(body_out)
+
+        if "training" in losses:
+            log_info("Skipping T2TModel top and loss because training loss "
+                     "returned from body")
+            logits = output
+        else:
+            logits = self.top(output, features)
+            losses["training"] = self.loss(logits, features)
+
+        return logits, losses
