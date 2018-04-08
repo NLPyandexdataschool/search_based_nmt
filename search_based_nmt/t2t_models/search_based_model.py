@@ -138,39 +138,32 @@ class LSTMSearchBased(T2TModel):
         target_modality = self._problem_hparams.target_modality
         vocab_size = target_modality._vocab_size
         print("\n\nvocab_size:", vocab_size, "\n\n")
-        for key in self._problem_hparams.nearest_target_keys:
-            log_info("Transforming %s with %s.targets_bottom", key, target_modality.name)
-            transformed_features[key] = target_modality.targets_bottom(features[key])
-            log_info("Transforming %s with one-hot encoding", key)
-            # shape is (bs, max_len, vocab_size)
-            transformed_features[key + "_one_hot"] = tf.one_hot(features[key],
-                                                                depth=vocab_size,
-                                                                axis=-1)
+        with tf.variable_scope(target_modality.name, reuse=True):
+            for key in self._problem_hparams.nearest_target_keys:
+                log_info("Transforming %s with %s.targets_bottom", key, target_modality.name)
+                transformed_features[key] = target_modality.targets_bottom(features[key])
+                log_info("Transforming %s with one-hot encoding", key)
+                # shape is (bs, max_len, vocab_size)
+                transformed_features[key + "_one_hot"] = tf.one_hot(features[key],
+                                                                    depth=vocab_size,
+                                                                    axis=-1)
 
         return transformed_features
 
     def model_fn(self, features):
-        """
-        We need this for shallow fusion to change logits.
-        """
+        """We need this for shallow fusion to change logits."""
         transformed_features = self.bottom(features)
-
-        if self.hparams.activation_dtype == "bfloat16":
-            for k, v in six.iteritems(transformed_features):
-                if v.dtype == tf.float32:
-                    transformed_features[k] = tf.cast(v, tf.bfloat16)
 
         with tf.variable_scope("body"):
             log_info("Building model body")
             body_out = self.body(transformed_features)
-        output, losses = self._normalize_body_output(body_out)
+            output, losses = self._normalize_body_output(body_out)
 
-        if "training" in losses:
-            log_info("Skipping T2TModel top and loss because training loss "
-                     "returned from body")
-            logits = output
-        else:
-            logits = self.top(output, features)
-            losses["training"] = self.loss(logits, features)
-
+            if "training" in losses:
+                log_info("Skipping T2TModel top and loss because training loss "
+                         "returned from body")
+                logits = output
+            else:
+                logits = self.top(output, features)
+                losses["training"] = self.loss(logits, features)
         return logits, losses
