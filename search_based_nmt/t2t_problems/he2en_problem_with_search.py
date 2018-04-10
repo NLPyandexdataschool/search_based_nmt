@@ -26,7 +26,7 @@ def txt_search_base_iter(source_path, target_path, searcher, translator, num_nea
         result_dict = {'inputs': source, 'targets': target}
         nearest_words = searcher.search(source, num_nearest)
         for i, nearest_word in enumerate(nearest_words):
-            nearest_target = translator.translate(nearest_word)[0]
+            nearest_target = translator.translate_random(nearest_word)
             result_dict['nearest' + str(i)] = nearest_word
             result_dict['nearest_target' + str(i)] = nearest_target
         yield result_dict

@@ -65,7 +65,6 @@ def measure_quality(references_file_name, sources_file_name, hypotheses_file_nam
 
 if __name__ == '__main__':
     warnings.filterwarnings("ignore")
-
     args = parse_args()
 
     print(measure_quality(

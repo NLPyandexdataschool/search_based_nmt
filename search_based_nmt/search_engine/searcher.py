@@ -69,12 +69,30 @@ class Searcher:
                 words = line.strip().split(' ')
                 self.data[words[0]] = words[1:]
 
-    def search(self, word, n_nearest=10):
+    def search(self, word, n_nearest=1000):
         if word not in self.data:
             return []
         else:
             return [
-                word
-                for word in self.data[word]
-                if word in self.words_to_search
+                cur_word
+                for cur_word in self.data[word]
+                if cur_word in self.words_to_search
+            ][:n_nearest]
+
+
+class TableSearcher:
+    def __init__(self, table_file_name):
+        self.data = {}
+        with open(table_file_name) as handler:
+            for line in handler:
+                words = line.strip().split(' ')
+                self.data[words[0]] = words[1:]
+
+    def search(self, word, n_nearest=1000):
+        if word not in self.data:
+            return []
+        else:
+            return [
+                cur_word
+                for cur_word in self.data[word]
             ][:n_nearest]
