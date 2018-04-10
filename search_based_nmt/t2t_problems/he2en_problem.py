@@ -45,7 +45,7 @@ class TranslitHeToEn(translate.TranslateProblem):
     def generate_samples(self, data_dir, tmp_dir, dataset_split):
         is_train_dataset = dataset_split == problem.DatasetSplit.TRAIN
         ext = '.txt'
-        dataset_label = 'train' if is_train_dataset else 'new_dev'
+        dataset_label = 'train' if is_train_dataset else 'clear_dev'
         dataset_prefix = '' if is_train_dataset else '../'
 
         he_path = os.path.join(data_dir, dataset_prefix + 'he.' + dataset_label + ext)
