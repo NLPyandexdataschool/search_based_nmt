@@ -182,8 +182,9 @@ class LSTMSearchBased(T2TModel):
 
                 if True:
 
-                    y_tilda = tf.concat([features["nearest_target_one_hot_{}".format(i)]
-                                         for i in range(self._problem_hparams.num_nearest)], axis=1)
+                    y_tilda = tf.concat([features[key + "_one_hot"]
+                                         for key in self._problem_hparams.nearest_target_keys],
+                                        axis=1)
                     p_tilda = tf.diag_part(tf.tensordot(dzq, y_tilda, axes=[[2], [1]]))
                     logits = inv_dz * self.top(output, features)
                 else:
