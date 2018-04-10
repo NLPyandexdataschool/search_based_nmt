@@ -77,11 +77,11 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
                   tf.TensorArray(tf.float32, size=tf.shape(inputs)[1], dynamic_size=True, name='1_dzeta')]
     else:
         p_copy = None
-
+    # TODO: add fusion_type in hparams
     cell = AttentionWrapperSearchBased(
         tf.nn.rnn_cell.MultiRNNCell(layers),
         [attention_mechanism]*hparams.num_heads,
-        storage=storage, build_storage=build_storage, fusion_type=hparams.fusion_type, p_copy=p_copy, start_index=n,
+        storage=storage, build_storage=build_storage, p_copy=p_copy, start_index=n,
         attention_layer_size=[hparams.attention_layer_size]*hparams.num_heads,
         output_attention=(hparams.output_attention == 1))
 
@@ -144,7 +144,7 @@ class LSTMSearchBased(T2TModel):
 
     def bottom(self, features):
         transformed_features = super().bottom(features)
-
+        print(features.keys())
         # here we can define how to transform nearest_targets
         # now they are transformed with one-hot encoding
         target_modality = self._problem_hparams.target_modality
@@ -180,7 +180,7 @@ class LSTMSearchBased(T2TModel):
                 dzq = tf.transpose(p_copy[0].stack(), [1, 0, 2])
                 inv_dz = tf.transpose(p_copy[1].stack(), [1, 0])
 
-                if True:
+                if False:
 
                     y_tilda = tf.concat([features[key + "_one_hot"]
                                          for key in self._problem_hparams.nearest_target_keys],

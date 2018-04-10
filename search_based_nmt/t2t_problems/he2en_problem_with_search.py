@@ -79,7 +79,7 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
         search_he_path = os.path.join(data_dir, 'he.' + SEARCH_NAME + ext)
         search_en_path = os.path.join(data_dir, 'en.' + SEARCH_NAME + ext)
         table_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  '..', 'search_engine', 'table.txt')
+                                  '..', 'search_engine', 'big_table.txt')
 
         searcher = Searcher(table_path, search_he_path)
         translator = Translator(data_dir, search_he_path)
