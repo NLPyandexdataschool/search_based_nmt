@@ -31,7 +31,6 @@ from tensorflow.contrib.seq2seq import AttentionWrapperState
 from tensorflow.contrib.rnn import BasicLSTMCell
 
 
-
 class LSTMShallowFusionCell(BasicLSTMCell):
     def __init__(self, num_utils, build_storage, storage, **kwargs):
         super().__init__(num_utils, **kwargs)
@@ -39,37 +38,34 @@ class LSTMShallowFusionCell(BasicLSTMCell):
 
 def _compute_attention(attention_mechanism, cell_output, attention_state,
                        attention_layer):
-  """Computes the attention and alignments for a given attention_mechanism."""
-  alignments, next_attention_state = attention_mechanism(
-      cell_output, state=attention_state)
+    """Computes the attention and alignments for a given attention_mechanism."""
+    alignments, next_attention_state = attention_mechanism(
+        cell_output, state=attention_state)
 
-  # Reshape from [batch_size, memory_time] to [batch_size, 1, memory_time]
-  expanded_alignments = array_ops.expand_dims(alignments, 1)
-  # Context is the inner product of alignments and values along the
-  # memory time dimension.
-  # alignments shape is
-  #   [batch_size, 1, memory_time]
-  # attention_mechanism.values shape is
-  #   [batch_size, memory_time, memory_size]
-  # the batched matmul is over memory_time, so the output shape is
-  #   [batch_size, 1, memory_size].
-  # we then squeeze out the singleton dim.
-  context = math_ops.matmul(expanded_alignments, attention_mechanism.values)
-  context = array_ops.squeeze(context, [1])
+    # Reshape from [batch_size, memory_time] to [batch_size, 1, memory_time]
+    expanded_alignments = array_ops.expand_dims(alignments, 1)
+    # Context is the inner product of alignments and values along the
+    # memory time dimension.
+    # alignments shape is
+    #     [batch_size, 1, memory_time]
+    # attention_mechanism.values shape is
+    #     [batch_size, memory_time, memory_size]
+    # the batched matmul is over memory_time, so the output shape is
+    #     [batch_size, 1, memory_size].
+    # we then squeeze out the singleton dim.
+    context = math_ops.matmul(expanded_alignments, attention_mechanism.values)
+    context = array_ops.squeeze(context, [1])
 
-  if attention_layer is not None:
-    attention = attention_layer(array_ops.concat([cell_output, context], 1))
-  else:
-    attention = context
+    if attention_layer is not None:
+        attention = attention_layer(array_ops.concat([cell_output, context], 1))
+    else:
+        attention = context
 
-  return attention, alignments, next_attention_state
+    return attention, alignments, next_attention_state
 
 
 def T(x):
     return tf.transpose(x, [1, 0])
-
-def expand_1(x):
-    return tf.reshape(x, (128, 1, x.shape[1]))
 
 
 class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
@@ -82,6 +78,7 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
                  storage=None,
                  fusion_type='deep',
                  p_copy=None,
+                 start_index=0,
                  attention_layer_size=None,
                  alignment_history=False,
                  cell_input_fn=None,
@@ -159,24 +156,27 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
         """
         super(AttentionWrapperSearchBased, self).__init__(
             cell,
-             attention_mechanism,
-             attention_layer_size=attention_layer_size,
-             alignment_history=alignment_history,
-             cell_input_fn=cell_input_fn,
-             output_attention=output_attention,
-             initial_cell_state=initial_cell_state,
-             name=name
+            attention_mechanism,
+            attention_layer_size=attention_layer_size,
+            alignment_history=alignment_history,
+            cell_input_fn=cell_input_fn,
+            output_attention=output_attention,
+            initial_cell_state=initial_cell_state,
+            name=name
         )
         self._build_storage = build_storage
         self._storage = storage
         self._fusion_type = fusion_type
         self._p_copy = p_copy
 
+        self._start_index = start_index
+
         self.M = tf.Variable(tf.random_normal((attention_layer_size[0],
-                                               attention_layer_size[0]), stddev=0.1), trainable=True)
+                                               attention_layer_size[0]),
+                                              stddev=0.1), trainable=True)
 
         # self.f_gate_1 = tf.layers.Dense(64, activation='relu')
-        self.f_gate = tf.layers.Dense(1, activation='sigmoid')
+        self.f_gate = tf.layers.Dense(1, activation=tf.nn.sigmoid)
 
     def call(self, inputs, state):
         """Perform a step of attention-wrapped RNN.
@@ -265,15 +265,16 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
             alignment_history=self._item_or_tuple(maybe_all_histories))
 
         with open('tmp_file.txt', 'w') as f:
-            print (self._storage, attention, file=f)
+            print(self._storage, attention, file=f)
 
         if self._build_storage:
-            self._storage[0] = tf.concat([self._storage[0], expand_1(attention)], axis=1)
-            self._storage[1] = tf.concat([self._storage[1], expand_1(cell_output)], axis=1)
+            self._storage[0].write(self._start_index + state.time, attention)
+            self._storage[1].write(self._start_index + state.time, cell_output)
         else:
             m_attn = tf.tensordot(attention, self.M, axes=[1, 0])
             q = T(tf.reduce_sum(tf.transpose(self._storage[0], [1, 0, 2]) * m_attn, axis=2))
-            z_tilda = tf.reduce_sum(tf.transpose(q * tf.transpose(self._storage[1], [2, 0, 1]), [1, 2, 0]), axis=1)
+            hid_first_storage = tf.transpose(self._storage[1], [2, 0, 1])
+            z_tilda = tf.reduce_sum(tf.transpose(q * hid_first_storage, [1, 2, 0]), axis=1)
 
             concat = tf.concat([attention, cell_output, z_tilda], axis=1)
             dzeta = tf.squeeze(self.f_gate(concat))
@@ -282,7 +283,8 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
                 cell_output = T(T(cell_output) * (1. - dzeta)) + T(dzeta * T(z_tilda))
             else:
                 x = T(dzeta * T(q))
-                self._p_copy = tf.concat([self._p_copy, tf.reshape(x, (x.shape[0], 1, x.shape[1]))], axis=1)
+                self._p_copy[0].write(state.time, x)
+                self._p_copy[1].write(state.time, 1. - dzeta)
 
         if self._output_attention:
             return attention, next_state
