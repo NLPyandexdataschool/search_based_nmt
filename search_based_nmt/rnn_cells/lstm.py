@@ -283,6 +283,7 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
                 cell_output = T(T(cell_output) * (1. - dzeta)) + T(dzeta * T(z_tilda))
             else:
                 x = T(dzeta * T(q))
+
                 self._p_copy[0].write(state.time, x)
                 self._p_copy[1].write(state.time, 1. - dzeta)
 
