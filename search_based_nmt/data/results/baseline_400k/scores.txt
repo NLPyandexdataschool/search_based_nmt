@@ -1,0 +1,5 @@
+clear_dev 0.5065
+train_dev 0.5827
+clear_test 0.4133
+more_dev 0.5529
+more_test 0.5351
