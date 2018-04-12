@@ -1,0 +1,4 @@
+small_table.txt filter=lfs diff=lfs merge=lfs -text
+save_small_table.txt filter=lfs diff=lfs merge=lfs -text
+table.txt filter=lfs diff=lfs merge=lfs -text
+big_table.txt filter=lfs diff=lfs merge=lfs -text
