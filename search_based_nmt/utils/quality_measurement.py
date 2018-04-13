@@ -1,8 +1,6 @@
 import argparse
-import numpy as np
-from nltk.translate.bleu_score import sentence_bleu, corpus_bleu
+from nltk.translate.bleu_score import corpus_bleu
 from nltk.translate.bleu_score import SmoothingFunction
-import warnings
 from collections import defaultdict
 
 
@@ -50,8 +48,6 @@ def measure_quality(references_file_name, sources_file_name, hypotheses_file_nam
                 for key in hypotheses_dict:
                     predictions.append(hypotheses_dict[key])
                     targets.append(references_dict[key])
-                # predictions = [hypotheses_dict[key] for key in hypotheses_dict]
-                # targets = [references_dict[key] for key in hypotheses_dict]
 
                 smoothie = METHODS[n]
                 score = corpus_bleu(
@@ -64,12 +60,11 @@ def measure_quality(references_file_name, sources_file_name, hypotheses_file_nam
 
 
 if __name__ == '__main__':
-    warnings.filterwarnings("ignore")
     args = parse_args()
 
     print(measure_quality(
         references_file_name=args.references,
         sources_file_name=args.sources,
         hypotheses_file_name=args.hypotheses,
-        n=0
+        n=args.n
     ))

@@ -17,9 +17,6 @@ from search_based_nmt.search_engine.searcher import Searcher
 from search_based_nmt.search_engine.translator import Translator
 
 
-SEARCH_NAME = os.getenv('SEARCH_NAME', 'search')
-
-
 def txt_search_base_iter(source_path, target_path, searcher, translator, num_nearest):
     for source, target in zip(text_problems.txt_line_iterator(source_path),
                               text_problems.txt_line_iterator(target_path)):
@@ -71,18 +68,19 @@ class TranslitHeToEnWithSearch(translate.TranslateProblem):
 
     def generate_samples(self, data_dir, tmp_dir, dataset_split):
         is_train_dataset = dataset_split == problem.DatasetSplit.TRAIN
-        dataset_label = 'train' if is_train_dataset else 'dev'
+        dataset_label = os.getenv('TRAIN_NAME') if is_train_dataset else os.getenv('DEV_NAME')
         ext = '.txt'
-        he_path = os.path.join(data_dir, 'he.' + dataset_label + ext)
-        en_path = os.path.join(data_dir, 'en.' + dataset_label + ext)
+        original_data_dir = os.getenv('DATA_DIR')
 
-        search_he_path = os.path.join(data_dir, 'he.' + SEARCH_NAME + ext)
-        search_en_path = os.path.join(data_dir, 'en.' + SEARCH_NAME + ext)
-        table_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                  '..', 'search_engine', 'big_table.txt')
+        he_path = os.path.join(original_data_dir, 'he.' + dataset_label + ext)
+        en_path = os.path.join(original_data_dir, 'en.' + dataset_label + ext)
+
+        search_he_path = os.path.join(original_data_dir, 'he.' + os.getenv('SEARCH_NAME') + ext)
+        search_en_path = os.path.join(original_data_dir, 'en.' + os.getenv('SEARCH_NAME') + ext)
+        table_path = os.getenv('TABLE_PATH')
 
         searcher = Searcher(table_path, search_he_path)
-        translator = Translator(data_dir, search_he_path)
+        translator = Translator(search_he_path, search_en_path)
 
         return txt_search_base_iter(he_path, en_path, searcher, translator,
                                     self.num_nearest)

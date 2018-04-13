@@ -6,7 +6,7 @@ SCRIPTS_PATH=$(dirname $0)
 if ! [ -z $TRAIN_DIR ]
 then
     cd $TRAIN_DIR
-    ls | grep -v ^gitkeep | grep -v ^gitignore | xargs rm -rf
+#    ls | grep -v ^gitkeep | grep -v ^gitignore | xargs rm -rf
 else
     echo '$TRAIN_DIR is empty'
 fi

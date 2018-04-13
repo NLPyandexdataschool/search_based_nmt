@@ -5,7 +5,7 @@ from heapq import heappush, heappushpop, heappop
 class SearcherException(Exception):
     pass
 
-
+# TODO: what the hell is this code for?
 class StupidSearcher:
     def __init__(self, file_names):
         '''
@@ -60,26 +60,23 @@ class StupidSearcher:
 
 
 class Searcher:
-    def __init__(self, table_file_name, file_to_search_name):
-        with open(file_to_search_name) as handler:
-            self.words_to_search = set([line.strip() for line in handler])
-        self.data = {}
-        with open(table_file_name) as handler:
+    def __init__(self, table_file_name, src_search_name):
+        with open(src_search_name, encoding='utf8') as handler:
+            words_to_search = set([line.strip() for line in handler])
+
+        self._data = {}
+        with open(table_file_name, encoding='utf8') as handler:
             for line in handler:
                 words = line.strip().split(' ')
-                self.data[words[0]] = words[1:]
+                self._data[words[0]] = [w for w in words[1:] if w in words_to_search]
 
     def search(self, word, n_nearest=1000):
-        if word not in self.data:
-            return []
-        else:
-            return [
-                cur_word
-                for cur_word in self.data[word]
-                if cur_word in self.words_to_search
-            ][:n_nearest]
+        try:
+            return self._data[word][:n_nearest]
+        except KeyError as e:
+            raise SearcherException('KeyError in searcher with {}'.format(word))
 
-
+# TODO: what the hell is this code for?
 class TableSearcher:
     def __init__(self, table_file_name):
         self.data = {}
