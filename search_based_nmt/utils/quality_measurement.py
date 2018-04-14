@@ -30,9 +30,9 @@ def parse_args():
 
 
 def measure_quality(references_file_name, sources_file_name, hypotheses_file_name, n=0):
-    with open(references_file_name) as references_handler,\
-         open(sources_file_name) as sources_handler,\
-         open(hypotheses_file_name) as hypotheses_handler:
+    with open(references_file_name, encoding='utf8') as references_handler,\
+         open(sources_file_name, encoding='utf8') as sources_handler,\
+         open(hypotheses_file_name, encoding='utf8') as hypotheses_handler:
                 references_dict = defaultdict(list)
                 hypotheses_dict = {}
                 for reference, source, hypothesis in zip(
