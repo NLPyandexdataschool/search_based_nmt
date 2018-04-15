@@ -31,6 +31,13 @@ do
 key="$1"
 
 case $key in
+    --sb|--search-based)
+    MODEL=search_based_model
+    HPARAMS_SET=search_based_hparams
+    PROBLEM=he2en_ws
+    shift
+    ;;
+
     --table_path)
     export TABLE_PATH="$2"
     shift
