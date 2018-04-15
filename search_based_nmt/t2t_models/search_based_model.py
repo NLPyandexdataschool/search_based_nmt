@@ -3,6 +3,7 @@ from tensor2tensor.utils import registry
 
 import tensorflow as tf
 from tensorflow.python.eager import context
+from tensor2tensor.models.lstm import lstm_attention
 from search_based_nmt.search_engine.searcher import Searcher
 from tensor2tensor.layers import common_layers
 from itertools import count
@@ -67,8 +68,7 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
         # Flatten inputs.
         inputs = common_layers.flatten4d3d(inputs)
         # LSTM encoder.
-        lstm_cell = tf.contrib.rnn.BasicLSTMCell(hparams.hidden_size)
-        encoder_outputs, final_encoder_state = lstm_bid_encoder(inputs, lstm_cell, hparams, train, "encoder")
+        encoder_outputs, final_encoder_state = lstm_bid_encoder(inputs, hparams, train, "encoder")
         # LSTM decoder with attention
         shifted_targets = common_layers.shift_right(targets)
         decoder_outputs, p_copy = lstm_attention_search_based_decoder(
@@ -114,7 +114,8 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
         [attention_mechanism]*hparams.num_heads,
         storage=storage, build_storage=build_storage, p_copy=p_copy, start_index=n,
         attention_layer_size=[hparams.attention_layer_size]*hparams.num_heads,
-        output_attention=(hparams.output_attention == 1))
+        output_attention=(hparams.output_attention == 1),
+        fusion_type=hparams.fusion_type)
 
     batch_size = common_layers.shape_list(inputs)[0]
 
@@ -138,7 +139,16 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
 
 @registry.register_model("search_based_model")
 class LSTMSearchBased(T2TModel):
+    def _check_hparams(self):
+        fusion_type = self._hparam.get('fusion_type')
+        if fusion_type in ['shallow', 'deep']:
+            message = 'Unknown fusion_type: {}'.format(fusion_type)
+            if fusion_type is None:
+                message += '. Make sure you use search_based_hparams'
+            raise ValueError(message)
+
     def body(self, features):
+        self._check_hparams()
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
         storage = [tf.TensorArray(tf.float32,
                                   size=(tf.shape(features["inputs"])[1] * self._problem_hparams.num_nearest),
@@ -207,8 +217,7 @@ class LSTMSearchBased(T2TModel):
                 dzq = tf.transpose(p_copy[0].stack(), [1, 0, 2])
                 inv_dz = tf.transpose(p_copy[1].stack(), [1, 0])
 
-                if False:
-
+                if self._hparams.fusion_type == 'shallow':
                     y_tilda = tf.concat([features[key + "_one_hot"]
                                          for key in self._problem_hparams.nearest_target_keys],
                                         axis=1)
@@ -219,3 +228,10 @@ class LSTMSearchBased(T2TModel):
 
                 losses["training"] = self.loss(logits, features)
         return logits, losses
+
+
+@registry.register_hparams
+def search_based_hparams():
+    hparams = lstm_attention()
+    hparams.add_hparam("fusion_type", "deep")
+    return hparams
