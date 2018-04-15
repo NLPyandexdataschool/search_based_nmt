@@ -140,8 +140,8 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
 @registry.register_model("search_based_model")
 class LSTMSearchBased(T2TModel):
     def _check_hparams(self):
-        fusion_type = self._hparam.get('fusion_type')
-        if fusion_type in ['shallow', 'deep']:
+        fusion_type = self._hparams.get('fusion_type')
+        if fusion_type not in ['shallow', 'deep']:
             message = 'Unknown fusion_type: {}'.format(fusion_type)
             if fusion_type is None:
                 message += '. Make sure you use search_based_hparams'
