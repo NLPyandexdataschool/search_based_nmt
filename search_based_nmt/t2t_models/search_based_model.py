@@ -11,22 +11,54 @@ from search_based_nmt.rnn_cells.lstm import LSTMShallowFusionCell, AttentionWrap
 import six
 
 
-def rnn(inputs, rnn_cell, hparams, train, name, initial_state=None):
-    """Run LSTM cell on inputs, assuming they are [batch x time x size]."""
+def lstm_bid_encoder(inputs, hparams, train, name):
+    """Bidirectional LSTM for encoding inputs that are [batch x time x size]."""
 
     def dropout_lstm_cell():
         return tf.contrib.rnn.DropoutWrapper(
-            rnn_cell,
+            tf.contrib.rnn.BasicLSTMCell(hparams.hidden_size // 2),
             input_keep_prob=1.0 - hparams.dropout * tf.to_float(train))
 
-    layers = [dropout_lstm_cell() for _ in range(hparams.num_hidden_layers)]
     with tf.variable_scope(name):
-        return tf.nn.dynamic_rnn(
-            tf.contrib.rnn.MultiRNNCell(layers),
-            inputs,
-            initial_state=initial_state,
+        cell_fw = tf.contrib.rnn.MultiRNNCell(
+            [dropout_lstm_cell() for _ in range(hparams.num_hidden_layers)])
+
+        cell_bw = tf.contrib.rnn.MultiRNNCell(
+            [dropout_lstm_cell() for _ in range(hparams.num_hidden_layers)])
+
+        ((encoder_fw_outputs, encoder_bw_outputs),
+         (encoder_fw_state, encoder_bw_state)) = tf.nn.bidirectional_dynamic_rnn(
+            cell_fw=cell_fw,
+            cell_bw=cell_bw,
+            inputs=inputs,
             dtype=tf.float32,
             time_major=False)
+
+        encoder_outputs = tf.concat((encoder_fw_outputs, encoder_bw_outputs), 2)
+        encoder_states = []
+
+        for i in range(hparams.num_hidden_layers):
+            if isinstance(encoder_fw_state[i], tf.contrib.rnn.LSTMStateTuple):
+                encoder_state_c = tf.concat(
+                    values=(encoder_fw_state[i].c, encoder_bw_state[i].c),
+                    axis=1,
+                    name="encoder_fw_state_c")
+                encoder_state_h = tf.concat(
+                    values=(encoder_fw_state[i].h, encoder_bw_state[i].h),
+                    axis=1,
+                    name="encoder_fw_state_h")
+                encoder_state = tf.contrib.rnn.LSTMStateTuple(
+                    c=encoder_state_c, h=encoder_state_h)
+            elif isinstance(encoder_fw_state[i], tf.Tensor):
+                encoder_state = tf.concat(
+                    values=(encoder_fw_state[i], encoder_bw_state[i]),
+                    axis=1,
+                    name="bidirectional_concat")
+
+            encoder_states.append(encoder_state)
+
+        encoder_states = tuple(encoder_states)
+        return encoder_outputs, encoder_states
 
 
 def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_storage, storage, n):
@@ -36,8 +68,7 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
         inputs = common_layers.flatten4d3d(inputs)
         # LSTM encoder.
         lstm_cell = tf.contrib.rnn.BasicLSTMCell(hparams.hidden_size)
-        encoder_outputs, final_encoder_state = rnn(
-            tf.reverse(inputs, axis=[1]), lstm_cell, hparams, train, "encoder")
+        encoder_outputs, final_encoder_state = lstm_bid_encoder(inputs, lstm_cell, hparams, train, "encoder")
         # LSTM decoder with attention
         shifted_targets = common_layers.shift_right(targets)
         decoder_outputs, p_copy = lstm_attention_search_based_decoder(
