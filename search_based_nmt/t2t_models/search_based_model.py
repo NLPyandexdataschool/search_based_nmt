@@ -109,16 +109,12 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
 class LSTMSearchBased(T2TModel):
     def body(self, features):
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
-        # storage = [tf.zeros((self._hparams.batch_size, 0,
-        #                      self._hparams.attention_layer_size * self._hparams.num_heads)),
-        #            tf.zeros((self._hparams.batch_size, 0, self._hparams.hidden_size))]
         storage = [tf.TensorArray(tf.float32,
                                   size=(tf.shape(features["inputs"])[1] * self._problem_hparams.num_nearest),
                                   dynamic_size=True, name='c'),
                    tf.TensorArray(tf.float32,
                                   size=(tf.shape(features["inputs"])[1] * self._problem_hparams.num_nearest),
                                   dynamic_size=True, name='z')]
-
 
         print('neares_keys', self._problem_hparams.nearest_keys)
         for i, (nearest_key, nearest_target_key) in enumerate(zip(self._problem_hparams.nearest_keys,
