@@ -20,6 +20,7 @@ export HPARAMS_SET=lstm_attention
 export ADDITIONAL_HPARAMS=""
 export BATCH_SIZE=128
 export EVAL_FREQUENCY=1000
+export KEEP_CHECKPOINT_MAX=20
 export TRAIN_STEPS=100000
 export SEED=3189
 
@@ -111,6 +112,12 @@ case $key in
 
     --eval_frequency)
     export EVAL_FREQUENCY="$2"
+    shift # past argument
+    shift # past value
+    ;;
+
+    --keep_checkpoint_max)
+    export KEEP_CHECKPOINT_MAX="$2"
     shift # past argument
     shift # past value
     ;;

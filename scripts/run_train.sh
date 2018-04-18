@@ -13,4 +13,5 @@ t2t-trainer \
     --random_seed=$SEED \
     --train_steps=$TRAIN_STEPS \
     --t2t_usr_dir=$T2T_USR_DIR \
-    --local_eval_frequency=$EVAL_FREQUENCY
+    --local_eval_frequency=$EVAL_FREQUENCY \
+    --keep_checkpoint_max=$KEEP_CHECKPOINT_MAX
