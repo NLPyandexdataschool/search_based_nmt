@@ -174,8 +174,10 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
         self.M = tf.Variable(tf.random_normal((attention_layer_size[0],
                                                attention_layer_size[0]),
                                               stddev=0.1), trainable=True)
+        self.lambda_beta = tf.Variable(0., trainable=True)
+        self.beta = None
 
-        # self.f_gate_1 = tf.layers.Dense(64, activation='relu')
+        self.f_gate_hid = tf.layers.Dense(64, activation=tf.nn.relu)
         self.f_gate = tf.layers.Dense(1, activation=tf.nn.sigmoid)
 
     def call(self, inputs, state):
@@ -272,12 +274,21 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
             self._storage[1].write(self._start_index + state.time, cell_output)
         else:
             m_attn = tf.tensordot(attention, self.M, axes=[1, 0])
-            q = T(tf.reduce_sum(tf.transpose(self._storage[0], [1, 0, 2]) * m_attn, axis=2))
+            E = T(tf.reduce_sum(tf.transpose(self._storage[0], [1, 0, 2]) * m_attn, axis=2))
+
+            if self.beta is None:
+                self.beta = tf.zeros_like(E)
+
+            q = tf.nn.softmax(E - self.lambda_beta * self.beta, axis=1)
+
             hid_first_storage = tf.transpose(self._storage[1], [2, 0, 1])
             z_tilda = tf.reduce_sum(tf.transpose(q * hid_first_storage, [1, 2, 0]), axis=1)
 
             concat = tf.concat([attention, cell_output, z_tilda], axis=1)
-            dzeta = tf.squeeze(self.f_gate(concat))
+            dzeta = tf.squeeze(self.f_gate(self.f_gate_hid(concat)))
+
+            # update beta
+            self.beta += q * dzeta
 
             if self._fusion_type == 'deep':
                 cell_output = T(T(cell_output) * (1. - dzeta)) + T(dzeta * T(z_tilda))

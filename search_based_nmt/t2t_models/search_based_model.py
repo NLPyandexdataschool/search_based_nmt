@@ -221,8 +221,17 @@ class LSTMSearchBased(T2TModel):
                     y_tilda = tf.concat([features[key + "_one_hot"]
                                          for key in self._problem_hparams.nearest_target_keys],
                                         axis=1)
-                    p_tilda = tf.diag_part(tf.tensordot(dzq, y_tilda, axes=[[2], [1]]))
-                    logits = inv_dz * self.top(output, features)
+                    # TODO: do shallow fusion
+                    p_tilda = tf.transpose(
+                        tf.matrix_diag_part(
+                            tf.transpose(
+                                tf.tensordot(dzq, y_tilda, axes=[[2], [1]]),
+                                [2, 3, 0, 1]
+                            )
+                        ),
+                        [2, 0, 1]
+                    )
+                    logits = inv_dz * self.top(output, features) + p_tilda
                 else:
                     logits = self.top(output, features)
 
