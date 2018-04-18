@@ -78,6 +78,7 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
                  storage=None,
                  fusion_type='deep',
                  p_copy=None,
+                 start_index=0,
                  attention_layer_size=None,
                  alignment_history=False,
                  cell_input_fn=None,
@@ -168,12 +169,14 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
         self._fusion_type = fusion_type
         self._p_copy = p_copy
 
+        self._start_index = start_index
+
         self.M = tf.Variable(tf.random_normal((attention_layer_size[0],
                                                attention_layer_size[0]),
                                               stddev=0.1), trainable=True)
 
         # self.f_gate_1 = tf.layers.Dense(64, activation='relu')
-        self.f_gate = tf.layers.Dense(1, activation='sigmoid')
+        self.f_gate = tf.layers.Dense(1, activation=tf.nn.sigmoid)
 
     def call(self, inputs, state):
         """Perform a step of attention-wrapped RNN.
@@ -265,10 +268,8 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
             print(self._storage, attention, file=f)
 
         if self._build_storage:
-            self._storage[0] = tf.concat([self._storage[0], tf.expand_dims(attention, axis=1)],
-                                         axis=1)
-            self._storage[1] = tf.concat([self._storage[1], tf.expand_dims(cell_output, axis=1)],
-                                         axis=1)
+            self._storage[0].write(self._start_index + state.time, attention)
+            self._storage[1].write(self._start_index + state.time, cell_output)
         else:
             m_attn = tf.tensordot(attention, self.M, axes=[1, 0])
             q = T(tf.reduce_sum(tf.transpose(self._storage[0], [1, 0, 2]) * m_attn, axis=2))
@@ -282,7 +283,9 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
                 cell_output = T(T(cell_output) * (1. - dzeta)) + T(dzeta * T(z_tilda))
             else:
                 x = T(dzeta * T(q))
-                self._p_copy = tf.concat([self._p_copy, tf.expand_dims(x, axis=1)], axis=1)
+
+                self._p_copy[0].write(state.time, x)
+                self._p_copy[1].write(state.time, 1. - dzeta)
 
         if self._output_attention:
             return attention, next_state

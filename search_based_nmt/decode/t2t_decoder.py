@@ -19,7 +19,7 @@ def decode(estimator, hparams, decode_hp):
         os.utime(FLAGS.decode_to_file, (ckpt_time, ckpt_time))
 
 
-def main(_):
+def main():
     tf.logging.set_verbosity(tf.logging.INFO)
     usr_dir.import_usr_dir(FLAGS.t2t_usr_dir)
     FLAGS.use_tpu = False    # decoding not supported on TPU
@@ -38,4 +38,4 @@ def main(_):
 
 
 if __name__ == "__main__":
-    tf.app.run()
+    main()

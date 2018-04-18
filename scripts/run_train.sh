@@ -4,7 +4,7 @@ SCRIPTS_PATH=$(dirname $0)
 . $SCRIPTS_PATH/args_parse.sh
 
 t2t-trainer \
-    --data_dir=$DATA_DIR \
+    --data_dir=$GENERATED_DATA_DIR \
     --problems=$PROBLEM\
     --model=$MODEL\
     --hparams_set=$HPARAMS_SET\

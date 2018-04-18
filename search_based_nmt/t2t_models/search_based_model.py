@@ -29,7 +29,7 @@ def rnn(inputs, rnn_cell, hparams, train, name, initial_state=None):
             time_major=False)
 
 
-def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_storage, storage):
+def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_storage, storage, n):
     """LSTM seq2seq search-based model with attention"""
     with tf.variable_scope("lstm_seq2seq_attention", reuse=tf.AUTO_REUSE):
         # Flatten inputs.
@@ -40,17 +40,20 @@ def lstm_seq2seq_search_based_attention(inputs, targets, hparams, train, build_s
             tf.reverse(inputs, axis=[1]), lstm_cell, hparams, train, "encoder")
         # LSTM decoder with attention
         shifted_targets = common_layers.shift_right(targets)
-        decoder_outputs, _ = lstm_attention_search_based_decoder(
+        decoder_outputs, p_copy = lstm_attention_search_based_decoder(
             common_layers.flatten4d3d(shifted_targets),
             hparams, train, "decoder",
             final_encoder_state, encoder_outputs,
-            build_storage, storage)
+            build_storage, storage, n)
 
-        return tf.expand_dims(decoder_outputs, axis=2)
+        if build_storage:
+            return tf.expand_dims(decoder_outputs, axis=2)
+        else:
+            return tf.expand_dims(decoder_outputs, axis=2), p_copy
 
 
 def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_state,
-                                        encoder_outputs, build_storage, storage):
+                                        encoder_outputs, build_storage, storage, n):
     """Run LSTM cell with attention on inputs of shape [batch x time x size]."""
 
     def dropout_lstm_cell():
@@ -70,14 +73,15 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
         hparams.hidden_size, encoder_outputs)
 
     if not build_storage:
-        p_copy = tf.zeros((inputs.shape[0], 0, storage.shape[1]))
+        p_copy = [tf.TensorArray(tf.float32, size=tf.shape(inputs)[1], dynamic_size=True, name='dzeta_dot_q'),
+                  tf.TensorArray(tf.float32, size=tf.shape(inputs)[1], dynamic_size=True, name='1_dzeta')]
     else:
         p_copy = None
-
+    # TODO: add fusion_type in hparams
     cell = AttentionWrapperSearchBased(
         tf.nn.rnn_cell.MultiRNNCell(layers),
         [attention_mechanism]*hparams.num_heads,
-        storage=storage, build_storage=build_storage, fusion_type='deep', p_copy=p_copy,
+        storage=storage, build_storage=build_storage, p_copy=p_copy, start_index=n,
         attention_layer_size=[hparams.attention_layer_size]*hparams.num_heads,
         output_attention=(hparams.output_attention == 1))
 
@@ -98,41 +102,49 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
         if hparams.output_attention == 1 and hparams.num_heads > 1:
             output = tf.layers.dense(output, hparams.hidden_size)
 
-        return output, state
+        return output, p_copy
 
 
 @registry.register_model("search_based_model")
 class LSTMSearchBased(T2TModel):
     def body(self, features):
         train = self._hparams.mode == tf.estimator.ModeKeys.TRAIN
-        storage = [tf.zeros((self._hparams.batch_size, 0,
-                             self._hparams.attention_layer_size * self._hparams.num_heads)),
-                   tf.zeros((self._hparams.batch_size, 0, self._hparams.hidden_size))]
+        # storage = [tf.zeros((self._hparams.batch_size, 0,
+        #                      self._hparams.attention_layer_size * self._hparams.num_heads)),
+        #            tf.zeros((self._hparams.batch_size, 0, self._hparams.hidden_size))]
+        storage = [tf.TensorArray(tf.float32,
+                                  size=(tf.shape(features["inputs"])[1] * self._problem_hparams.num_nearest),
+                                  dynamic_size=True, name='c'),
+                   tf.TensorArray(tf.float32,
+                                  size=(tf.shape(features["inputs"])[1] * self._problem_hparams.num_nearest),
+                                  dynamic_size=True, name='z')]
+
 
         print('neares_keys', self._problem_hparams.nearest_keys)
-        for nearest_key, nearest_target_key in zip(self._problem_hparams.nearest_keys,
-                                                   self._problem_hparams.nearest_target_keys):
+        for i, (nearest_key, nearest_target_key) in enumerate(zip(self._problem_hparams.nearest_keys,
+                                                                  self._problem_hparams.nearest_target_keys)):
 
             lstm_seq2seq_search_based_attention(features[nearest_key],
                                                 features[nearest_target_key],
                                                 self._hparams,
                                                 train,
                                                 build_storage=True,
-                                                storage=storage)
+                                                storage=storage, n=i*tf.shape(features["inputs"])[1])
 
+        storage_stack = [tf.transpose(s.stack(), [1, 0, 2]) for s in storage]
         with open('tmp_log.txt', 'a') as f:
             print('storage', storage, file=f)
-
+            print('storage_stack', storage_stack, file=f)
         return lstm_seq2seq_search_based_attention(features['inputs'],
                                                    features['targets'],
                                                    self._hparams,
                                                    train,
                                                    build_storage=False,
-                                                   storage=storage)
+                                                   storage=storage_stack, n=0)
 
     def bottom(self, features):
         transformed_features = super().bottom(features)
-
+        print(features.keys())
         # here we can define how to transform nearest_targets
         # now they are transformed with one-hot encoding
         target_modality = self._problem_hparams.target_modality
@@ -156,7 +168,8 @@ class LSTMSearchBased(T2TModel):
 
         with tf.variable_scope("body"):
             log_info("Building model body")
-            body_out = self.body(transformed_features)
+            body_out, p_copy = self.body(transformed_features)
+
             output, losses = self._normalize_body_output(body_out)
 
             if "training" in losses:
@@ -164,6 +177,18 @@ class LSTMSearchBased(T2TModel):
                          "returned from body")
                 logits = output
             else:
-                logits = self.top(output, features)
+                dzq = tf.transpose(p_copy[0].stack(), [1, 0, 2])
+                inv_dz = tf.transpose(p_copy[1].stack(), [1, 0])
+
+                if False:
+
+                    y_tilda = tf.concat([features[key + "_one_hot"]
+                                         for key in self._problem_hparams.nearest_target_keys],
+                                        axis=1)
+                    p_tilda = tf.diag_part(tf.tensordot(dzq, y_tilda, axes=[[2], [1]]))
+                    logits = inv_dz * self.top(output, features)
+                else:
+                    logits = self.top(output, features)
+
                 losses["training"] = self.loss(logits, features)
         return logits, losses

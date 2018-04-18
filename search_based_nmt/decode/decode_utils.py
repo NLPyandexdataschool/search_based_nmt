@@ -40,11 +40,11 @@ def decode_from_file_search_based(estimator,
     num_decode_batches = (len(sorted_inputs) - 1) // decode_hp.batch_size + 1
 
     data_dir = '/'.join(filename.split('/')[:-1])
-    table_path = os.path.join(data_dir, '../../search_engine/table.txt')
+    table_path = os.path.join(data_dir, '../../search_engine/big_table.txt')
     he_search_path = os.path.join(data_dir, 'he.search.txt')
     en_search_path = os.path.join(data_dir, 'en.search.txt')
     searcher = Searcher(table_path, he_search_path)
-    translator = Translator(data_dir, en_search_path)
+    translator = Translator(data_dir, he_search_path)
 
     def input_fn():
         input_gen = _decode_batch_input_fn_search_based(
@@ -117,7 +117,7 @@ def _decode_batch_input_fn_search_based(problem_id, num_decode_batches, sorted_i
         batch = defaultdict(list)
         for inputs in sorted_inputs[b * batch_size:(b + 1) * batch_size]:
             nearests = searcher.search(inputs, hparams.num_nearest)
-            nearest_targets = [translator.translate(word)[0] for word in nearests]
+            nearest_targets = [translator.translate_random(word)[0] for word in nearests]
             keys = ["inputs"] + hparams.nearest_keys
 
             # TODO: rewrite this shit
