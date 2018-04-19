@@ -181,21 +181,25 @@ class LSTMSearchBased(T2TModel):
 
     def bottom(self, features):
         transformed_features = super().bottom(features)
-        print(features.keys())
         # here we can define how to transform nearest_targets
         # now they are transformed with one-hot encoding
         target_modality = self._problem_hparams.target_modality
         vocab_size = target_modality._vocab_size
-        print("\n\nvocab_size:", vocab_size, "\n\n")
         with tf.variable_scope(target_modality.name, reuse=True):
             for key in self._problem_hparams.nearest_target_keys:
                 log_info("Transforming %s with %s.targets_bottom", key, target_modality.name)
                 transformed_features[key] = target_modality.targets_bottom(features[key])
                 log_info("Transforming %s with one-hot encoding", key)
+
+                # fearutes[key] has weird extra dimention with shape 1
+                flatten_fearutes = common_layers.flatten4d3d(features[key])
+                one_hot_features = tf.one_hot(
+                    flatten_fearutes,
+                    depth=vocab_size,
+                    axis=-1
+                )
+                transformed_features[key + "_one_hot"] = common_layers.flatten4d3d(one_hot_features)
                 # shape is (bs, max_len, vocab_size)
-                transformed_features[key + "_one_hot"] = tf.one_hot(features[key],
-                                                                    depth=vocab_size,
-                                                                    axis=-1)
 
         return transformed_features
 
@@ -218,10 +222,10 @@ class LSTMSearchBased(T2TModel):
                 inv_dz = tf.transpose(p_copy[1].stack(), [1, 0])
 
                 if self._hparams.fusion_type == 'shallow':
-                    y_tilda = tf.concat([features[key + "_one_hot"]
+                    y_tilda = tf.concat([transformed_features[key + "_one_hot"]
                                          for key in self._problem_hparams.nearest_target_keys],
                                         axis=1)
-                    # TODO: do shallow fusion
+
                     p_tilda = tf.transpose(
                         tf.matrix_diag_part(
                             tf.transpose(
