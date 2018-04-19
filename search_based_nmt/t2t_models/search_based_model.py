@@ -108,7 +108,7 @@ def lstm_attention_search_based_decoder(inputs, hparams, train, name, initial_st
                   tf.TensorArray(tf.float32, size=tf.shape(inputs)[1], dynamic_size=True, name='1_dzeta')]
     else:
         p_copy = None
-    # TODO: add fusion_type in hparams
+
     cell = AttentionWrapperSearchBased(
         tf.nn.rnn_cell.MultiRNNCell(layers),
         [attention_mechanism]*hparams.num_heads,
@@ -157,7 +157,6 @@ class LSTMSearchBased(T2TModel):
                                   size=(tf.shape(features["inputs"])[1] * self._problem_hparams.num_nearest),
                                   dynamic_size=True, name='z')]
 
-        print('neares_keys', self._problem_hparams.nearest_keys)
         for i, (nearest_key, nearest_target_key) in enumerate(zip(self._problem_hparams.nearest_keys,
                                                                   self._problem_hparams.nearest_target_keys)):
 

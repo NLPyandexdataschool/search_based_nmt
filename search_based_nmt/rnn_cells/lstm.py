@@ -285,11 +285,10 @@ class AttentionWrapperSearchBased(tf.contrib.seq2seq.AttentionWrapper):
             z_tilda = tf.reduce_sum(tf.transpose(q * hid_first_storage, [1, 2, 0]), axis=1)
 
             concat = tf.concat([attention, cell_output, z_tilda], axis=1)
-            dzeta = tf.squeeze(self.f_gate(self.f_gate_hid(concat)))
+            dzeta = tf.squeeze(self.f_gate(self.f_gate_hid(concat)), axis=1)
 
             # update beta
             self.beta += q * dzeta
-
             if self._fusion_type == 'deep':
                 cell_output = T(T(cell_output) * (1. - dzeta)) + T(dzeta * T(z_tilda))
             else:
